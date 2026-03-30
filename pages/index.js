@@ -5,13 +5,13 @@
 export default function Home() {
   // Redirect to the static landing page
   if (typeof window !== 'undefined') {
-    window.location.href = '/index.html';
+window.location.href = '/app.html';
   }
   return null;
 }
 
 export async function getServerSideProps() {
   return {
-    redirect: { destination: '/index.html', permanent: false },
+redirect: { destination: '/app.html', permanent: false },
   };
 }
