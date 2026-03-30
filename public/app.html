@@ -1,255 +1,1067 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ReelMind AI — Faceless Video Empire on Autopilot</title>
+<title>ReelMind AI — Faceless Video Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#060610;--bg2:#0c0c20;--bg3:#13132e;--accent:#7c5cfc;--accent2:#c34bff;--text:#f0eeff;--muted:#8882aa;--border:rgba(124,92,252,0.2);--card:rgba(20,18,45,0.9);--success:#2ecc8a}
-html{scroll-behavior:smooth}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.7}
-h1,h2,h3{font-family:'Syne',sans-serif;font-weight:800;line-height:1.15}
-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:1rem 5%;background:rgba(6,6,16,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
-.logo{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800}.logo span{color:var(--accent2)}
-nav ul{display:flex;gap:2rem;list-style:none}
-nav ul a{color:var(--muted);text-decoration:none;font-size:.88rem;transition:color .2s}
-nav ul a:hover{color:var(--text)}
-.nav-cta{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;padding:.5rem 1.3rem;border-radius:50px;font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;cursor:pointer}
-.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8rem 5% 4rem;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(ellipse,rgba(124,92,252,0.2) 0%,transparent 65%);pointer-events:none}
-.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(124,92,252,0.1);border:1px solid var(--border);padding:6px 16px;border-radius:50px;font-size:.76rem;color:#b59dff;margin-bottom:1.6rem}
-.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s ease infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.hero h1{font-size:clamp(2.5rem,6vw,4.8rem);max-width:780px;margin-bottom:1.2rem;background:linear-gradient(135deg,#fff 30%,#c34bff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero p{color:var(--muted);max-width:500px;font-size:1rem;margin-bottom:2rem}
-.hero-btns{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center;margin-bottom:3.5rem}
-.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;padding:.85rem 2rem;border-radius:50px;font-family:'Syne',sans-serif;font-weight:700;font-size:.92rem;cursor:pointer;box-shadow:0 0 30px rgba(124,92,252,.35)}
-.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border);padding:.85rem 2rem;border-radius:50px;font-family:'Syne',sans-serif;font-weight:700;font-size:.92rem;cursor:pointer}
-.stats-row{display:flex;gap:2.5rem;flex-wrap:wrap;justify-content:center}
-.stat{text-align:center}.stat strong{font-family:'Syne',sans-serif;font-size:1.9rem;font-weight:800;display:block}.stat span{font-size:.78rem;color:var(--muted)}
-.section{padding:5rem 5%}
-.section-tag{font-size:.72rem;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.7rem}
-.section-title{font-size:clamp(1.8rem,3.5vw,2.8rem);margin-bottom:.8rem}
-.section-sub{color:var(--muted);font-size:.9rem;margin-bottom:2.5rem;max-width:480px;line-height:1.7}
-.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1.2rem}
-.feature-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.6rem;transition:all .3s}
-.feature-card:hover{border-color:var(--accent);transform:translateY(-3px)}
-.ficon{width:42px;height:42px;border-radius:11px;background:rgba(124,92,252,.14);display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:1rem}
-.feature-card h3{font-size:.95rem;margin-bottom:.4rem}.feature-card p{color:var(--muted);font-size:.82rem}
-.pricing-section{padding:6rem 5%;text-align:center}
-.pricing-toggle{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:50px;padding:3px;margin-bottom:2.5rem}
-.ptog{padding:7px 22px;border-radius:50px;font-size:.82rem;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;transition:all .2s}
-.ptog.on{background:var(--accent);color:#fff}
-.plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.2rem;max-width:900px;margin:0 auto 2.5rem}
-.plan-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:2rem 1.8rem;text-align:left;position:relative;transition:all .2s}
-.plan-card.pop{border-color:var(--accent);background:rgba(124,92,252,.06)}
-.pop-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:.68rem;font-family:'Syne',sans-serif;font-weight:700;padding:4px 16px;border-radius:50px}
-.plan-name{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:.35rem}
-.plan-desc{color:var(--muted);font-size:.78rem;margin-bottom:1.2rem}
-.plan-price{font-family:'Syne',sans-serif;font-size:2.4rem;font-weight:800;margin-bottom:.25rem}
-.plan-price sup{font-size:1rem;vertical-align:super}
-.plan-price sub{font-size:.78rem;color:var(--muted);font-weight:400}
-.plan-period{font-size:.72rem;color:var(--muted);margin-bottom:1.5rem}
-.plan-features{list-style:none;margin-bottom:1.8rem}
-.plan-features li{display:flex;align-items:flex-start;gap:8px;font-size:.82rem;color:var(--muted);margin-bottom:.6rem}
-.plan-features li::before{content:'✓';color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px}
-.plan-btn{width:100%;padding:.82rem;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);transition:all .2s}
-.plan-btn:hover{background:rgba(124,92,252,.14);border-color:var(--accent)}
-.plan-card.pop .plan-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
-.payment-section{padding:4rem 5%;max-width:820px;margin:0 auto}
-.payment-card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:2.8rem}
-.payment-hdr{text-align:center;margin-bottom:2.2rem}
-.payment-hdr h2{font-size:1.7rem;margin-bottom:.4rem}
-.payment-hdr p{color:var(--muted);font-size:.86rem}
-.selected-chip{display:inline-flex;align-items:center;gap:7px;margin-top:.9rem;padding:8px 18px;background:rgba(124,92,252,.1);border:1px solid var(--border);border-radius:50px}
-.selected-chip span{font-size:.78rem;color:var(--muted)}
-.selected-chip strong{font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;color:#c4b8ff}
-.pay-form{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
-.field{display:flex;flex-direction:column;gap:5px}
-.field.full{grid-column:1/-1}
-.field label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.field input,.field select{background:#0a0a1e;border:1px solid var(--border);color:var(--text);padding:.68rem .95rem;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.85rem;outline:none}
-.field input:focus,.field select:focus{border-color:var(--accent)}
-.field select option{background:#0a0a1e}
-.card-row{display:flex;gap:7px;align-items:center;background:#0a0a1e;border:1px solid var(--border);padding:.68rem .95rem;border-radius:9px}
-.card-row input{background:transparent;border:none;flex:1;color:var(--text);font-size:.85rem;font-family:'DM Sans',sans-serif;outline:none}
-.card-logo{font-size:.6rem;padding:2px 7px;border-radius:3px;background:#1a1a3e;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700}
-.pay-btn{width:100%;padding:.95rem;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:.98rem;border-radius:11px;cursor:pointer;margin-top:.4rem;box-shadow:0 4px 24px rgba(124,92,252,.35)}
-.secure-note{display:flex;align-items:center;gap:7px;font-size:.7rem;color:var(--muted);justify-content:center;margin:.7rem 0}
-.trust-badges{display:flex;justify-content:center;gap:1.2rem;flex-wrap:wrap;margin-top:1.2rem}
-.trust-badge{font-size:.7rem;color:var(--muted)}
-footer{padding:2.5rem 5% 2rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
-footer p{color:var(--muted);font-size:.78rem}
-.footer-links{display:flex;gap:1.3rem}
-.footer-links a{color:var(--muted);font-size:.78rem;text-decoration:none}
-@media(max-width:768px){nav ul{display:none}.pay-form{grid-template-columns:1fr}}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #060610;
+    --bg2: #0c0c20;
+    --bg3: #13132e;
+    --accent: #7c5cfc;
+    --accent2: #c34bff;
+    --glow: rgba(124,92,252,0.18);
+    --text: #f0eeff;
+    --muted: #8882aa;
+    --border: rgba(124,92,252,0.2);
+    --card: rgba(20,18,45,0.9);
+    --success: #2ecc8a;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  h1,h2,h3,h4 { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1.15; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 4%;
+    background: rgba(6,6,16,0.85);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; }
+  .logo span { color: var(--accent2); }
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.55rem 1.4rem;
+    border-radius: 50px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .nav-cta:hover { opacity: 0.85; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8rem 4% 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px; left: 50%; transform: translateX(-50%);
+    width: 900px; height: 900px;
+    background: radial-gradient(ellipse, rgba(124,92,252,0.18) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(124,92,252,0.12);
+    border: 1px solid var(--border);
+    padding: 6px 18px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    color: #b59dff;
+    margin-bottom: 1.8rem;
+    letter-spacing: 0.04em;
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; }
+  .hero h1 {
+    font-size: clamp(2.8rem, 7vw, 5.2rem);
+    max-width: 780px;
+    margin-bottom: 1.4rem;
+    background: linear-gradient(135deg, #fff 30%, #c34bff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    color: var(--muted);
+    max-width: 520px;
+    font-size: 1.1rem;
+    margin-bottom: 2.5rem;
+  }
+  .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; border: none;
+    padding: 0.85rem 2.2rem;
+    border-radius: 50px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem;
+    cursor: pointer; transition: transform .2s, box-shadow .2s;
+    box-shadow: 0 0 30px rgba(124,92,252,0.35);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(195,75,255,0.4); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.85rem 2.2rem;
+    border-radius: 50px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem;
+    cursor: pointer; transition: background .2s;
+  }
+  .btn-ghost:hover { background: rgba(124,92,252,0.1); }
+  .stats-row {
+    display: flex; gap: 3rem; justify-content: center; margin-top: 4.5rem;
+    flex-wrap: wrap;
+  }
+  .stat { text-align: center; }
+  .stat strong { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; color: var(--text); display: block; }
+  .stat span { font-size: 0.82rem; color: var(--muted); }
+
+  /* ── VIDEO PREVIEW MOCKUP ── */
+  .preview-section {
+    padding: 5rem 4%;
+    display: flex; justify-content: center;
+  }
+  .preview-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: 100%; max-width: 900px;
+    overflow: hidden;
+  }
+  .preview-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .dot-red { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; }
+  .dot-yellow { width: 11px; height: 11px; border-radius: 50%; background: #febc2e; }
+  .dot-green { width: 11px; height: 11px; border-radius: 50%; background: #28c840; }
+  .preview-header span { margin-left: auto; font-size: 0.78rem; color: var(--muted); }
+  .preview-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .preview-left { padding: 1.5rem; border-right: 1px solid var(--border); }
+  .preview-right { padding: 1.5rem; }
+  .form-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.06em; }
+  .form-select, .form-input {
+    width: 100%; background: var(--bg2); border: 1px solid var(--border);
+    color: var(--text); padding: 0.6rem 0.9rem; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+    margin-bottom: 1rem; outline: none;
+    transition: border-color .2s;
+  }
+  .form-select:focus, .form-input:focus { border-color: var(--accent); }
+  .form-textarea {
+    width: 100%; background: var(--bg2); border: 1px solid var(--border);
+    color: var(--text); padding: 0.6rem 0.9rem; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+    margin-bottom: 1rem; outline: none; resize: vertical;
+    min-height: 80px;
+    transition: border-color .2s;
+  }
+  .form-textarea:focus { border-color: var(--accent); }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .tag {
+    padding: 4px 14px; border-radius: 50px; font-size: 0.78rem; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg2); color: var(--muted);
+    transition: all .2s;
+  }
+  .tag.active { background: rgba(124,92,252,0.2); border-color: var(--accent); color: #c4b8ff; }
+  .generate-btn {
+    width: 100%; background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; color: #fff; padding: 0.8rem;
+    border-radius: 10px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;
+    cursor: pointer; transition: opacity .2s; margin-top: 0.5rem;
+  }
+  .generate-btn:hover { opacity: 0.88; }
+  .video-placeholder {
+    background: var(--bg);
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 220px;
+    color: var(--muted); font-size: 0.85rem; text-align: center; gap: 12px;
+    position: relative; overflow: hidden;
+  }
+  .play-icon {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: rgba(124,92,252,0.2); border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .play-icon::after {
+    content: ''; width: 0; height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 18px solid var(--accent);
+    margin-left: 4px;
+  }
+  .progress-bar {
+    width: 100%; height: 4px; background: var(--bg2); border-radius: 2px; margin-top: 1rem;
+  }
+  .progress-fill { height: 100%; width: 72%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; }
+  .export-row { display: flex; gap: 8px; margin-top: 1rem; }
+  .export-btn {
+    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--muted); font-size: 0.78rem; cursor: pointer;
+    text-align: center; transition: all .2s;
+  }
+  .export-btn:hover { border-color: var(--accent); color: var(--text); }
+  .yt-connect-btn {
+    width: 100%; margin-top: 8px; padding: 9px;
+    background: rgba(255,0,0,0.12); border: 1px solid rgba(255,0,0,0.3);
+    border-radius: 8px; color: #ff6b6b; font-size: 0.82rem; cursor: pointer;
+    font-family: 'Syne', sans-serif; font-weight: 700; transition: background .2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .yt-connect-btn:hover { background: rgba(255,0,0,0.2); }
+
+  /* ── FEATURES ── */
+  .section { padding: 6rem 4%; }
+  .section-tag { font-size: 0.78rem; color: var(--accent2); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }
+  .section-title { font-size: clamp(2rem, 4vw, 3rem); max-width: 600px; margin-bottom: 1rem; }
+  .section-sub { color: var(--muted); max-width: 500px; font-size: 1rem; margin-bottom: 3.5rem; }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+  }
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.8rem;
+    transition: border-color .3s, transform .3s;
+  }
+  .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+  .feature-icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    background: rgba(124,92,252,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; margin-bottom: 1.2rem;
+  }
+  .feature-card h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+  .feature-card p { color: var(--muted); font-size: 0.88rem; }
+
+  /* ── HOW IT WORKS ── */
+  .how-section { padding: 6rem 4%; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0; }
+  .step {
+    padding: 2rem;
+    position: relative;
+    text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .step:last-child { border-right: none; }
+  .step-num {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1rem;
+    color: var(--accent2);
+    margin: 0 auto 1.2rem;
+  }
+  .step h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .step p { color: var(--muted); font-size: 0.85rem; }
+
+  /* ── YOUTUBE AUTOMATION ── */
+  .yt-section {
+    padding: 6rem 4%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .yt-visual {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+  }
+  .yt-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px;
+    background: var(--bg2);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+  }
+  .yt-thumb {
+    width: 56px; height: 38px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    flex-shrink: 0;
+  }
+  .yt-info { flex: 1; }
+  .yt-info strong { display: block; font-size: 0.82rem; margin-bottom: 2px; }
+  .yt-info span { font-size: 0.72rem; color: var(--muted); }
+  .yt-status {
+    font-size: 0.7rem; padding: 3px 10px; border-radius: 50px;
+    background: rgba(46,204,138,0.12); color: var(--success); border: 1px solid rgba(46,204,138,0.25);
+  }
+  .yt-status.pending { background: rgba(255,188,47,0.12); color: #fbc02d; border-color: rgba(255,188,47,0.3); }
+  .schedule-header {
+    font-size: 0.72rem; color: var(--muted); margin-bottom: 12px;
+    display: flex; justify-content: space-between;
+  }
+  .schedule-header span:last-child { color: var(--success); }
+  .yt-text h2 { font-size: clamp(1.8rem, 3.5vw, 2.8rem); margin-bottom: 1rem; }
+  .yt-text p { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.95rem; }
+  .yt-check-list { list-style: none; }
+  .yt-check-list li {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 0.9rem; margin-bottom: 0.8rem; color: var(--muted);
+  }
+  .yt-check-list li::before { content: '✓'; color: var(--success); font-weight: 700; flex-shrink: 0; }
+
+  /* ── PRICING ── */
+  .pricing-section { padding: 7rem 4%; text-align: center; }
+  .pricing-toggle {
+    display: inline-flex; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 50px; padding: 4px; margin-bottom: 3rem;
+  }
+  .ptoggle-btn {
+    padding: 8px 24px; border-radius: 50px; font-size: 0.85rem; cursor: pointer;
+    border: none; background: transparent; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; transition: all .2s;
+  }
+  .ptoggle-btn.active {
+    background: var(--accent); color: #fff;
+  }
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+    max-width: 1000px;
+    margin: 0 auto 3rem;
+  }
+  .plan-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.2rem 2rem;
+    text-align: left;
+    position: relative;
+    transition: border-color .3s;
+  }
+  .plan-card.popular {
+    border-color: var(--accent);
+    background: rgba(124,92,252,0.07);
+  }
+  .popular-badge {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 0.72rem; font-family: 'Syne', sans-serif; font-weight: 700;
+    padding: 5px 18px; border-radius: 50px; white-space: nowrap;
+  }
+  .plan-name { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .plan-desc { color: var(--muted); font-size: 0.83rem; margin-bottom: 1.5rem; }
+  .plan-price { font-family: 'Syne', sans-serif; font-size: 2.6rem; font-weight: 800; margin-bottom: 0.3rem; }
+  .plan-price sup { font-size: 1.2rem; vertical-align: super; }
+  .plan-price sub { font-size: 0.85rem; color: var(--muted); font-weight: 400; }
+  .plan-period { font-size: 0.78rem; color: var(--muted); margin-bottom: 1.8rem; }
+  .plan-features { list-style: none; margin-bottom: 2rem; }
+  .plan-features li {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.88rem; color: var(--muted); margin-bottom: 0.7rem;
+  }
+  .plan-features li::before { content: '✓'; color: var(--success); font-weight: 700; }
+  .plan-features li.off { color: rgba(136,130,170,0.4); }
+  .plan-features li.off::before { content: '✕'; color: rgba(136,130,170,0.3); }
+  .plan-btn {
+    width: 100%; padding: 0.85rem;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;
+    cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text);
+    transition: all .2s;
+  }
+  .plan-btn:hover { background: rgba(124,92,252,0.15); border-color: var(--accent); }
+  .plan-card.popular .plan-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-color: transparent; color: #fff;
+  }
+  .plan-card.popular .plan-btn:hover { opacity: 0.88; }
+  .divider-label {
+    display: flex; align-items: center; gap: 1rem; max-width: 1000px; margin: 0 auto 2rem;
+    color: var(--muted); font-size: 0.8rem;
+  }
+  .divider-label::before, .divider-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .per-video-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem; max-width: 1000px; margin: 0 auto;
+  }
+  .pv-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem; text-align: left;
+  }
+  .pv-card .pv-count { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; }
+  .pv-card .pv-label { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.8rem; }
+  .pv-card .pv-price { color: var(--accent2); font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; }
+
+  /* ── PAYMENT ── */
+  .payment-section {
+    padding: 5rem 4%;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .payment-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 3rem;
+  }
+  .payment-header { text-align: center; margin-bottom: 2.5rem; }
+  .payment-header h2 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+  .payment-header p { color: var(--muted); font-size: 0.9rem; }
+  .payment-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .field input, .field select {
+    background: var(--bg2); border: 1px solid var(--border);
+    color: var(--text); padding: 0.7rem 1rem; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+    outline: none; transition: border-color .2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .card-row {
+    display: flex; gap: 8px; align-items: center;
+    background: var(--bg2); border: 1px solid var(--border);
+    padding: 0.7rem 1rem; border-radius: 10px;
+  }
+  .card-row input { background: transparent; border: none; flex: 1; color: var(--text); font-size: 0.9rem; font-family: 'DM Sans'; outline: none; }
+  .card-logo { font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; background: #1a1a3e; color: var(--muted); font-family: 'Syne', sans-serif; font-weight: 700; }
+  .secure-note {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.75rem; color: var(--muted); justify-content: center; margin: 1rem 0;
+  }
+  .lock-icon { width: 12px; height: 12px; border: 1.5px solid var(--muted); border-radius: 2px; position: relative; }
+  .lock-icon::before { content: ''; position: absolute; top: -5px; left: 1px; width: 8px; height: 6px; border: 1.5px solid var(--muted); border-bottom: none; border-radius: 4px 4px 0 0; }
+  .pay-btn {
+    width: 100%; padding: 1rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; color: #fff;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.05rem;
+    border-radius: 12px; cursor: pointer; transition: opacity .2s;
+    margin-top: 0.5rem;
+  }
+  .pay-btn:hover { opacity: 0.87; }
+  .trust-badges {
+    display: flex; justify-content: center; gap: 1.5rem; margin-top: 1.5rem; flex-wrap: wrap;
+  }
+  .trust-badge { font-size: 0.72rem; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 3rem 4% 2rem;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+  }
+  footer p { color: var(--muted); font-size: 0.82rem; }
+  .footer-links { display: flex; gap: 1.5rem; }
+  .footer-links a { color: var(--muted); font-size: 0.82rem; text-decoration: none; }
+  .footer-links a:hover { color: var(--text); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .preview-body { grid-template-columns: 1fr; }
+    .preview-left { border-right: none; border-bottom: 1px solid var(--border); }
+    .yt-section { grid-template-columns: 1fr; gap: 2rem; }
+    .payment-form { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+    .steps { grid-template-columns: 1fr; }
+    .step { border-right: none; border-bottom: 1px solid var(--border); }
+    .step:last-child { border-bottom: none; }
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  .hero > * { animation: fadeUp 0.7s ease both; }
+  .hero .badge { animation-delay: 0.05s; }
+  .hero h1 { animation-delay: 0.15s; }
+  .hero p { animation-delay: 0.25s; }
+  .hero-btns { animation-delay: 0.35s; }
+  .stats-row { animation-delay: 0.45s; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .live-dot { animation: pulse 2s infinite; }
+
+  /* Toggle functionality */
+  .weekly-price { display: none; }
+  .monthly-price { display: block; }
 </style>
 </head>
 <body>
+
+<!-- NAV -->
 <nav>
   <div class="logo">Reel<span>Mind</span> AI</div>
-  <ul>
+  <ul class="nav-links">
     <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#youtube">YouTube</a></li>
     <li><a href="#pricing">Pricing</a></li>
-    <li><a href="#payment">Get Started</a></li>
   </ul>
-  <button class="nav-cta" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})">Start Free →</button>
+  <button class="nav-cta" onclick="document.getElementById('payment').scrollIntoView({behavior:'smooth'})">Start Free Trial</button>
 </nav>
 
+<!-- HERO -->
 <section class="hero">
-  <div class="badge"><span class="dot"></span>Live — 24/7 YouTube autopilot</div>
-  <h1>Your Faceless Channel. Fully Automated. Always Growing.</h1>
-  <p>AI writes the script, generates the voice, finds footage, and publishes to YouTube 24/7 — no face, no filming needed.</p>
+  <div class="badge"><span class="dot live-dot"></span> Fully Automated · 24/7 AI Video Engine</div>
+  <h1>Create Faceless AI Videos for Social Media on Autopilot</h1>
+  <p>Generate viral Reels, Shorts & TikToks with AI. Connect to YouTube and publish 24/7 without ever showing your face.</p>
   <div class="hero-btns">
-    <button class="btn-primary" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})">✦ Start Free Today</button>
-    <button class="btn-ghost" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">See Features →</button>
+    <button class="btn-primary" onclick="document.getElementById('generator').scrollIntoView({behavior:'smooth'})">Generate a Video Free</button>
+    <button class="btn-ghost" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">See How It Works</button>
   </div>
   <div class="stats-row">
     <div class="stat"><strong>2.4M+</strong><span>Videos Generated</span></div>
-    <div class="stat"><strong>18K+</strong><span>Active Creators</span></div>
-    <div class="stat"><strong>$2.8M</strong><span>Creator Revenue</span></div>
-    <div class="stat"><strong>24/7</strong><span>Auto Publishing</span></div>
+    <div class="stat"><strong>98%</strong><span>Faceless Success Rate</span></div>
+    <div class="stat"><strong>150K+</strong><span>Creators Onboarded</span></div>
+    <div class="stat"><strong>24/7</strong><span>Auto-Publishing</span></div>
   </div>
 </section>
 
+<!-- GENERATOR MOCKUP -->
+<section class="preview-section" id="generator">
+  <div class="preview-card">
+    <div class="preview-header">
+      <div class="dot-red"></div><div class="dot-yellow"></div><div class="dot-green"></div>
+      <span>ReelMind AI Studio — Video Generator</span>
+    </div>
+    <div class="preview-body">
+      <div class="preview-left">
+        <label class="form-label">Content Niche</label>
+        <select class="form-select">
+          <option>🔥 Motivation & Mindset</option>
+          <option>💰 Finance & Crypto</option>
+          <option>🏋️ Fitness & Health</option>
+          <option>🤖 AI & Tech News</option>
+          <option>🌍 Travel & Lifestyle</option>
+          <option>📚 Educational Facts</option>
+          <option>🎮 Gaming Highlights</option>
+        </select>
+
+        <label class="form-label">Platform</label>
+        <div class="tag-row">
+          <span class="tag active">YouTube Shorts</span>
+          <span class="tag">Instagram Reels</span>
+          <span class="tag">TikTok</span>
+          <span class="tag">Facebook</span>
+        </div>
+
+        <label class="form-label">Video Style</label>
+        <div class="tag-row">
+          <span class="tag active">Cinematic</span>
+          <span class="tag">Minimalist</span>
+          <span class="tag">Podcast Style</span>
+          <span class="tag">News Ticker</span>
+        </div>
+
+        <label class="form-label">AI Voice</label>
+        <select class="form-select">
+          <option>🎙️ Marcus — Deep & Authoritative</option>
+          <option>🎙️ Aria — Warm & Engaging</option>
+          <option>🎙️ Raj — Energetic & Punchy</option>
+          <option>🎙️ Luna — Calm & Soothing</option>
+        </select>
+
+        <label class="form-label">Video Topic / Prompt</label>
+        <textarea class="form-textarea" placeholder="e.g. 5 habits of millionaires that changed my mindset forever..."></textarea>
+
+        <label class="form-label">Duration</label>
+        <select class="form-select">
+          <option>30 seconds</option>
+          <option>45 seconds</option>
+          <option selected>60 seconds</option>
+          <option>90 seconds</option>
+        </select>
+
+        <button class="generate-btn" onclick="simulateGenerate()">✦ Generate Video</button>
+      </div>
+      <div class="preview-right">
+        <label class="form-label">Preview</label>
+        <div class="video-placeholder" id="video-preview">
+          <div class="play-icon"></div>
+          <div>Your video will appear here<br><span style="font-size:0.75rem;opacity:0.6;">AI-generated · Faceless · Ready to publish</span></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+        <p id="gen-status" style="font-size:0.75rem;color:var(--muted);margin-top:6px;text-align:center">Ready to generate</p>
+
+        <div class="export-row" style="margin-top:1rem">
+          <div class="export-btn">⬇ Download MP4</div>
+          <div class="export-btn">📋 Copy Caption</div>
+          <div class="export-btn">📅 Schedule</div>
+        </div>
+        <button class="yt-connect-btn" onclick="document.getElementById('youtube').scrollIntoView({behavior:'smooth'})">
+          ▶ Connect YouTube Channel & Auto-Publish
+        </button>
+
+        <div style="margin-top:1.2rem;padding:1rem;background:var(--bg2);border-radius:10px;border:1px solid var(--border)">
+          <div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Auto-Schedule Queue</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:0.8rem">Today 6:00 PM</span>
+            <span style="font-size:0.7rem;padding:2px 10px;background:rgba(46,204,138,0.12);color:var(--success);border-radius:50px;border:1px solid rgba(46,204,138,0.25)">Published</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:0.8rem">Tomorrow 9:00 AM</span>
+            <span style="font-size:0.7rem;padding:2px 10px;background:rgba(255,188,47,0.12);color:#fbc02d;border-radius:50px;border:1px solid rgba(255,188,47,0.3)">Queued</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:0.8rem">Tomorrow 3:00 PM</span>
+            <span style="font-size:0.7rem;padding:2px 10px;background:rgba(124,92,252,0.12);color:#b59dff;border-radius:50px;border:1px solid rgba(124,92,252,0.25)">Generating...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
 <section class="section" id="features">
   <div class="section-tag">Core Features</div>
-  <h2 class="section-title">Everything for a Faceless Empire</h2>
-  <p class="section-sub">No camera. No face. No editing. Just growth.</p>
+  <h2 class="section-title">Everything you need to run a faceless channel</h2>
+  <p class="section-sub">From AI script writing to auto-publishing — the entire workflow handled for you.</p>
   <div class="features-grid">
-    <div class="feature-card"><div class="ficon">🧠</div><h3>AI Script Writing</h3><p>Gemini AI generates viral, hook-optimized scripts with SEO titles and tags automatically.</p></div>
-    <div class="feature-card"><div class="ficon">🎙</div><h3>AI Voiceover</h3><p>ElevenLabs voices — deep male, calm female, ASMR, energetic and more.</p></div>
-    <div class="feature-card"><div class="ficon">🎬</div><h3>Auto B-Roll</h3><p>AI matches script keywords to HD portrait footage from Pexels and Pixabay.</p></div>
-    <div class="feature-card"><div class="ficon">📅</div><h3>Smart Scheduler</h3><p>Set publish times once. Auto-generates and uploads daily, every day.</p></div>
-    <div class="feature-card"><div class="ficon">⚡</div><h3>Viral Score AI</h3><p>Every video scored 0-100 before publishing. Only push your best content.</p></div>
-    <div class="feature-card"><div class="ficon">📊</div><h3>Analytics</h3><p>Views, CTR, and estimated AdSense revenue pulled from YouTube automatically.</p></div>
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <h3>AI Script Writer</h3>
+      <p>GPT-powered scripts tailored to your niche, optimized for engagement and retention hooks.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎙️</div>
+      <h3>Realistic AI Voiceover</h3>
+      <p>Choose from 20+ lifelike voices. Natural pacing, emphasis, and emotion — zero recording needed.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎬</div>
+      <h3>Auto B-Roll Matching</h3>
+      <p>AI matches stock footage, animations, and visuals to your script automatically.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💬</div>
+      <h3>Auto Captions & Subtitles</h3>
+      <p>Animated captions synced to audio with customizable fonts, colors, and animations.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📅</div>
+      <h3>Smart Scheduling</h3>
+      <p>AI picks optimal posting times based on your audience's peak engagement windows.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>Analytics Dashboard</h3>
+      <p>Track views, watch time, subscribers gained, and revenue across all connected channels.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌐</div>
+      <h3>Multi-Platform Push</h3>
+      <p>Publish to YouTube, Instagram, TikTok, and Facebook simultaneously with one click.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔁</div>
+      <h3>Bulk Generation</h3>
+      <p>Generate 30, 60, or 90 videos in a batch. Fill your entire content calendar in minutes.</p>
+    </div>
   </div>
 </section>
 
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div style="text-align:center;margin-bottom:3.5rem">
+    <div class="section-tag">Process</div>
+    <h2 class="section-title" style="margin:0 auto">From idea to published in 4 steps</h2>
+  </div>
+  <div class="steps" style="border:1px solid var(--border);border-radius:20px;overflow:hidden">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Choose Your Niche</h3>
+      <p>Select a content category, style, AI voice, and target platform.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Generate Video</h3>
+      <p>AI writes the script, generates voiceover, matches B-roll, and adds captions.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Review & Customize</h3>
+      <p>Preview your video, edit any element, or approve and let it auto-queue.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h3>Auto-Publish 24/7</h3>
+      <p>Your YouTube channel publishes on schedule while you sleep. Fully hands-free.</p>
+    </div>
+  </div>
+</section>
+
+<!-- YOUTUBE AUTOMATION -->
+<div id="youtube">
+<section class="yt-section">
+  <div class="yt-visual">
+    <div class="schedule-header">
+      <span>Auto-Publishing Queue</span>
+      <span class="live-dot">● Live</span>
+    </div>
+    <div class="yt-row">
+      <div class="yt-thumb" style="background:linear-gradient(135deg,#7c5cfc,#c34bff)"></div>
+      <div class="yt-info">
+        <strong>5 Habits of Millionaires</strong>
+        <span>YouTube Shorts · 58s · Today 6:00 PM</span>
+      </div>
+      <span class="yt-status">Published</span>
+    </div>
+    <div class="yt-row">
+      <div class="yt-thumb" style="background:linear-gradient(135deg,#1d9e75,#0f6e56)"></div>
+      <div class="yt-info">
+        <strong>AI Changed My Life in 2025</strong>
+        <span>YouTube Shorts · 45s · Tomorrow 9:00 AM</span>
+      </div>
+      <span class="yt-status pending">Queued</span>
+    </div>
+    <div class="yt-row">
+      <div class="yt-thumb" style="background:linear-gradient(135deg,#d85a30,#993c1d)"></div>
+      <div class="yt-info">
+        <strong>Why 99% of People Stay Broke</strong>
+        <span>YouTube Shorts · 60s · Tomorrow 3:00 PM</span>
+      </div>
+      <span class="yt-status pending">Generating</span>
+    </div>
+    <div class="yt-row">
+      <div class="yt-thumb" style="background:linear-gradient(135deg,#378add,#185fa5)"></div>
+      <div class="yt-info">
+        <strong>The Dark Side of Social Media</strong>
+        <span>YouTube Shorts · 52s · Day 3 · 12:00 PM</span>
+      </div>
+      <span class="yt-status pending">Scheduled</span>
+    </div>
+    <div style="margin-top:1.2rem;padding:1rem;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:0.78rem;color:var(--muted)">This month's channel growth</span>
+        <span style="font-size:0.78rem;color:var(--success)">+18.4%</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div style="background:var(--bg3);padding:10px;border-radius:8px">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem">47</div>
+          <div style="font-size:0.7rem;color:var(--muted)">Videos Published</div>
+        </div>
+        <div style="background:var(--bg3);padding:10px;border-radius:8px">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem">142K</div>
+          <div style="font-size:0.7rem;color:var(--muted)">Total Views</div>
+        </div>
+        <div style="background:var(--bg3);padding:10px;border-radius:8px">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem">+3.2K</div>
+          <div style="font-size:0.7rem;color:var(--muted)">New Subs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="yt-text">
+    <div class="section-tag">YouTube Automation</div>
+    <h2>Link your channel. It publishes itself.</h2>
+    <p>Connect your YouTube account once and let ReelMind run your channel on complete autopilot. Set your posting frequency, pick niches, and watch your subscriber count grow — while you do nothing.</p>
+    <ul class="yt-check-list">
+      <li>OAuth 2.0 secure YouTube channel connection</li>
+      <li>AI chooses optimal titles, descriptions & tags</li>
+      <li>Automatic thumbnail generation for each video</li>
+      <li>Smart posting schedule based on audience activity</li>
+      <li>Bulk generate 30-day content calendars instantly</li>
+      <li>Supports multiple channels simultaneously</li>
+      <li>Monitors performance and auto-adjusts content style</li>
+    </ul>
+    <button class="btn-primary" style="margin-top:1.5rem" onclick="document.getElementById('payment').scrollIntoView({behavior:'smooth'})">Connect YouTube Channel →</button>
+  </div>
+</section>
+</div>
+
+<!-- PRICING -->
 <section class="pricing-section" id="pricing">
   <div class="section-tag">Pricing</div>
-  <h2 class="section-title" style="text-align:center">Simple Plans. Massive Results.</h2>
-  <p style="color:var(--muted);text-align:center;margin-bottom:1.5rem">Start free. Cancel anytime.</p>
+  <h2 class="section-title" style="margin:0 auto 1rem">Simple, transparent pricing</h2>
+  <p class="section-sub" style="margin:0 auto 2rem">Choose the plan that scales with your content ambitions</p>
+
   <div class="pricing-toggle">
-    <button class="ptog on" onclick="setPricing('monthly',event)">Monthly</button>
-    <button class="ptog" onclick="setPricing('weekly',event)">Weekly</button>
+    <button class="ptoggle-btn active" onclick="setPricing('monthly')">Monthly</button>
+    <button class="ptoggle-btn" onclick="setPricing('weekly')">Weekly</button>
   </div>
+
   <div class="plans-grid">
     <div class="plan-card">
       <div class="plan-name">Starter</div>
-      <div class="plan-desc">For your first faceless channel</div>
-      <div class="plan-price monthly-price"><sup>₹</sup>1,900<sub>/mo</sub></div>
-      <div class="plan-price weekly-price" style="display:none"><sup>₹</sup>599<sub>/wk</sub></div>
-      <div class="plan-period">7-day free trial</div>
+      <div class="plan-desc">Perfect for beginners testing the waters</div>
+      <div class="plan-price monthly-price"><sup>$</sup>19<sub>/mo</sub></div>
+      <div class="plan-price weekly-price" style="display:none"><sup>$</sup>6<sub>/wk</sub></div>
+      <div class="plan-period monthly-price">billed monthly</div>
+      <div class="plan-period weekly-price" style="display:none">billed weekly</div>
       <ul class="plan-features">
-        <li>30 AI videos / month</li>
-        <li>1 YouTube channel</li>
-        <li>HD 1080p export</li>
+        <li>20 AI videos / month</li>
+        <li>YouTube Shorts only</li>
         <li>5 AI voice options</li>
-        <li>Auto captions</li>
-        <li>YouTube auto-publish</li>
+        <li>720p export quality</li>
+        <li>Basic captions</li>
+        <li class="off">Multi-platform publishing</li>
+        <li class="off">Bulk generation</li>
+        <li class="off">Analytics dashboard</li>
       </ul>
-      <button class="plan-btn" onclick="selectPlan('Starter','₹1,900/mo','starter_monthly')">Get Started Free</button>
+      <button class="plan-btn" onclick="selectPlan('Starter')">Get Started</button>
     </div>
-    <div class="plan-card pop">
-      <div class="pop-badge">✦ Most Popular</div>
+
+    <div class="plan-card popular">
+      <div class="popular-badge">Most Popular</div>
       <div class="plan-name">Creator Pro</div>
-      <div class="plan-desc">For serious creators scaling to 100K</div>
-      <div class="plan-price monthly-price"><sup>₹</sup>4,900<sub>/mo</sub></div>
-      <div class="plan-price weekly-price" style="display:none"><sup>₹</sup>1,499<sub>/wk</sub></div>
-      <div class="plan-period">7-day free trial</div>
+      <div class="plan-desc">For serious creators scaling fast</div>
+      <div class="plan-price monthly-price"><sup>$</sup>59<sub>/mo</sub></div>
+      <div class="plan-price weekly-price" style="display:none"><sup>$</sup>16<sub>/wk</sub></div>
+      <div class="plan-period monthly-price">billed monthly · save 20%</div>
+      <div class="plan-period weekly-price" style="display:none">billed weekly</div>
       <ul class="plan-features">
-        <li>150 AI videos / month</li>
-        <li>3 YouTube channels</li>
-        <li>4K Ultra HD</li>
-        <li>15 AI voices</li>
-        <li>Viral Score Predictor</li>
-        <li>Trend Hijacking Engine</li>
-        <li>Content Calendar AI</li>
+        <li>100 AI videos / month</li>
+        <li>All platforms (YT, IG, TikTok, FB)</li>
+        <li>20+ AI voice options</li>
+        <li>1080p Full HD export</li>
+        <li>Animated captions</li>
+        <li>Multi-platform publishing</li>
+        <li>Bulk generation (up to 30)</li>
+        <li>Full analytics dashboard</li>
       </ul>
-      <button class="plan-btn" onclick="selectPlan('Creator Pro','₹4,900/mo','creator_monthly')">Start Free Trial →</button>
+      <button class="plan-btn" onclick="selectPlan('Creator Pro')">Start Free Trial</button>
     </div>
+
     <div class="plan-card">
       <div class="plan-name">Agency</div>
-      <div class="plan-desc">For managing multiple channels</div>
-      <div class="plan-price monthly-price"><sup>₹</sup>12,900<sub>/mo</sub></div>
-      <div class="plan-price weekly-price" style="display:none"><sup>₹</sup>3,799<sub>/wk</sub></div>
-      <div class="plan-period">Full access, no limits</div>
+      <div class="plan-desc">For agencies managing multiple channels</div>
+      <div class="plan-price monthly-price"><sup>$</sup>149<sub>/mo</sub></div>
+      <div class="plan-price weekly-price" style="display:none"><sup>$</sup>40<sub>/wk</sub></div>
+      <div class="plan-period monthly-price">billed monthly · save 25%</div>
+      <div class="plan-period weekly-price" style="display:none">billed weekly</div>
       <ul class="plan-features">
         <li>Unlimited AI videos</li>
+        <li>All platforms + API access</li>
+        <li>50+ AI voice options</li>
+        <li>4K Ultra HD export</li>
+        <li>Custom branding & watermarks</li>
         <li>10 YouTube channels</li>
-        <li>Voice cloning</li>
-        <li>White-label dashboard</li>
-        <li>API access</li>
-        <li>Dedicated manager</li>
+        <li>Bulk generation (unlimited)</li>
+        <li>Priority support + Onboarding</li>
       </ul>
-      <button class="plan-btn" onclick="selectPlan('Agency','₹12,900/mo','agency_monthly')">Contact Sales</button>
+      <button class="plan-btn" onclick="selectPlan('Agency')">Contact Sales</button>
+    </div>
+  </div>
+
+  <!-- PAY PER VIDEO -->
+  <div class="divider-label">Or pay per video — no subscription needed</div>
+  <div class="per-video-row">
+    <div class="pv-card">
+      <div class="pv-count">1 Video</div>
+      <div class="pv-label">One-time purchase</div>
+      <div class="pv-price">$4.99</div>
+    </div>
+    <div class="pv-card">
+      <div class="pv-count">5 Videos</div>
+      <div class="pv-label">Save 20% per video</div>
+      <div class="pv-price">$19.99</div>
+    </div>
+    <div class="pv-card">
+      <div class="pv-count">20 Videos</div>
+      <div class="pv-label">Save 35% per video</div>
+      <div class="pv-price">$64.99</div>
+    </div>
+    <div class="pv-card">
+      <div class="pv-count">50 Videos</div>
+      <div class="pv-label">Best value per-video deal</div>
+      <div class="pv-price">$124.99</div>
     </div>
   </div>
 </section>
 
+<!-- PAYMENT FORM -->
 <section class="payment-section" id="payment">
   <div class="payment-card">
-    <div class="payment-hdr">
+    <div class="payment-header">
       <h2>Complete Your Purchase</h2>
-      <p>Start generating viral videos in the next 2 minutes</p>
-      <div class="selected-chip">
-        <span>Selected:</span>
-        <strong id="selected-plan">Creator Pro — ₹4,900/mo</strong>
+      <p>Start generating viral faceless videos in the next 2 minutes</p>
+      <div style="display:inline-flex;align-items:center;gap:8px;margin-top:1rem;padding:10px 20px;background:rgba(124,92,252,0.1);border:1px solid var(--border);border-radius:50px">
+        <span style="font-size:0.85rem;color:var(--muted)">Selected plan:</span>
+        <span id="selected-plan-label" style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;color:#c4b8ff">Creator Pro — $59/mo</span>
       </div>
     </div>
-    <div class="pay-form">
-      <div class="field"><label>First Name</label><input type="text" placeholder="Ravi"/></div>
-      <div class="field"><label>Last Name</label><input type="text" placeholder="Kumar"/></div>
-      <div class="field full"><label>Email Address</label><input type="email" placeholder="ravi@example.com"/></div>
-      <div class="field full"><label>Card Number</label><div class="card-row"><input type="text" placeholder="4242  4242  4242  4242" maxlength="19" oninput="fmtCard(this)"/><span class="card-logo">VISA</span><span class="card-logo">MC</span></div></div>
-      <div class="field"><label>Expiry</label><input type="text" placeholder="MM / YY" maxlength="7" oninput="fmtExp(this)"/></div>
-      <div class="field"><label>CVV</label><input type="text" placeholder="•••" maxlength="3"/></div>
-      <div class="field full"><label>Country</label><select><option>India</option><option>United States</option><option>United Kingdom</option><option>Singapore</option><option>UAE</option></select></div>
+    <div class="payment-form">
+      <div class="field">
+        <label>First Name</label>
+        <input type="text" placeholder="Ravi" />
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input type="text" placeholder="Kumar" />
+      </div>
       <div class="field full">
-        <button class="pay-btn" id="pay-btn" onclick="handlePay()">✦ Start Free Trial — Then ₹4,900/month</button>
-        <div class="secure-note">🔒 Secured by Razorpay · Cancel anytime · No hidden fees</div>
+        <label>Email Address</label>
+        <input type="email" placeholder="ravi@example.com" />
+      </div>
+      <div class="field full">
+        <label>Card Number</label>
+        <div class="card-row">
+          <input type="text" placeholder="4242  4242  4242  4242" maxlength="19" id="card-num" oninput="formatCard(this)"/>
+          <span class="card-logo">VISA</span>
+          <span class="card-logo">MC</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Expiry Date</label>
+        <input type="text" placeholder="MM / YY" maxlength="7" oninput="formatExpiry(this)"/>
+      </div>
+      <div class="field">
+        <label>CVV</label>
+        <input type="text" placeholder="•••" maxlength="3"/>
+      </div>
+      <div class="field full">
+        <label>Billing Country</label>
+        <select>
+          <option>India</option>
+          <option>United States</option>
+          <option>United Kingdom</option>
+          <option>Canada</option>
+          <option>Australia</option>
+          <option>Germany</option>
+          <option>Singapore</option>
+        </select>
+      </div>
+      <div class="field full">
+        <button class="pay-btn" onclick="handlePayment()">✦ Start My Free Trial — Then $59/month</button>
+        <div class="secure-note">
+          <div class="lock-icon"></div>
+          256-bit SSL encrypted · Cancel anytime · No hidden fees
+        </div>
       </div>
     </div>
     <div class="trust-badges">
       <span class="trust-badge">✓ 7-day free trial</span>
       <span class="trust-badge">✓ Cancel anytime</span>
-      <span class="trust-badge">✓ Instant access</span>
+      <span class="trust-badge">✓ GDPR compliant</span>
       <span class="trust-badge">✓ 24/7 support</span>
     </div>
   </div>
 </section>
 
+<!-- FOOTER -->
 <footer>
   <div class="logo">Reel<span>Mind</span> AI</div>
-  <p>© 2025 ReelMind AI · Built for Faceless Creators</p>
+  <p>© 2025 ReelMind AI. All rights reserved.</p>
   <div class="footer-links">
-    <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Terms of Service</a>
+    <a href="#">Contact</a>
+    <a href="#">API Docs</a>
   </div>
 </footer>
 
 <script>
-function setPricing(mode,e){
-  document.querySelectorAll('.ptog').forEach(b=>b.classList.remove('on'));
-  e.target.classList.add('on');
-  const isWeekly=mode==='weekly';
-  document.querySelectorAll('.monthly-price').forEach(el=>el.style.display=isWeekly?'none':'');
-  document.querySelectorAll('.weekly-price').forEach(el=>el.style.display=isWeekly?'':'none');
-}
-function selectPlan(name,price,key){
-  document.getElementById('selected-plan').textContent=name+' — '+price;
-  document.getElementById('pay-btn').textContent='✦ Start '+name+' Free Trial — Then '+price;
-  document.getElementById('payment').scrollIntoView({behavior:'smooth'});
-}
-function fmtCard(el){let v=el.value.replace(/\D/g,'').slice(0,16);el.value=v.replace(/(.{4})/g,'$1  ').trim();}
-function fmtExp(el){let v=el.value.replace(/\D/g,'').slice(0,4);if(v.length>2)v=v.slice(0,2)+' / '+v.slice(2);el.value=v;}
-function handlePay(){
-  const btn=document.getElementById('pay-btn');
-  btn.textContent='⏳ Processing...';btn.disabled=true;
-  setTimeout(()=>{btn.textContent='✓ Welcome to ReelMind AI! Redirecting...';btn.style.background='linear-gradient(135deg,#1d9e75,#0f6e56)';},2000);
-}
+  // Tag toggling
+  document.querySelectorAll('.tag').forEach(tag => {
+    tag.addEventListener('click', function() {
+      const row = this.closest('.tag-row');
+      row.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Generate simulation
+  function simulateGenerate() {
+    const btn = document.querySelector('.generate-btn');
+    const progress = document.getElementById('progress');
+    const status = document.getElementById('gen-status');
+    const preview = document.getElementById('video-preview');
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating...';
+    let w = 0;
+    const msgs = ['Writing AI script...','Generating voiceover...','Matching B-roll footage...','Adding captions...','Rendering video...','Done!'];
+    const interval = setInterval(() => {
+      w += 100/msgs.length;
+      progress.style.width = Math.min(w, 100) + '%';
+      status.textContent = msgs[Math.floor(w/(100/msgs.length))-1] || msgs[msgs.length-1];
+      if (w >= 100) {
+        clearInterval(interval);
+        btn.textContent = '✦ Generate Another Video';
+        btn.disabled = false;
+        preview.innerHTML = `<div style="width:100%;height:100%;min-height:220px;background:linear-gradient(135deg,rgba(124,92,252,0.3),rgba(195,75,255,0.2));border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px"><div class="play-icon"></div><div style="font-size:0.88rem;color:var(--text)">Video Ready!</div><div style="font-size:0.75rem;color:var(--muted)">Faceless · AI-generated · 1080p HD</div></div>`;
+      }
+    }, 400);
+  }
+
+  // Pricing toggle
+  function setPricing(mode) {
+    document.querySelectorAll('.ptoggle-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    const monthly = document.querySelectorAll('.monthly-price');
+    const weekly = document.querySelectorAll('.weekly-price');
+    if (mode === 'weekly') {
+      monthly.forEach(el => el.style.display = 'none');
+      weekly.forEach(el => el.style.display = 'block');
+    } else {
+      weekly.forEach(el => el.style.display = 'none');
+      monthly.forEach(el => el.style.display = 'block');
+    }
+  }
+
+  // Plan selection
+  function selectPlan(name) {
+    const prices = { 'Starter': '$19/mo', 'Creator Pro': '$59/mo', 'Agency': '$149/mo' };
+    document.getElementById('selected-plan-label').textContent = name + ' — ' + (prices[name] || '');
+    document.getElementById('payment').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Card format
+  function formatCard(el) {
+    let v = el.value.replace(/\D/g,'').substring(0,16);
+    el.value = v.replace(/(.{4})/g,'$1  ').trim();
+  }
+  function formatExpiry(el) {
+    let v = el.value.replace(/\D/g,'').substring(0,4);
+    if (v.length > 2) v = v.substring(0,2) + ' / ' + v.substring(2);
+    el.value = v;
+  }
+
+  // Payment handler
+  function handlePayment() {
+    const btn = document.querySelector('.pay-btn');
+    btn.textContent = '⏳ Processing...';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = '✓ Welcome to ReelMind AI!';
+      btn.style.background = 'linear-gradient(135deg, #1d9e75, #0f6e56)';
+    }, 2000);
+  }
 </script>
 </body>
 </html>
