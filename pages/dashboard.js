@@ -1,86 +1,111 @@
-import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
+// ── Config ────────────────────────────────────────────────────
 const NICHES = [
-  { value: 'finance', label: '💰 Personal Finance' },
-  { value: 'motivation', label: '🧠 Mindset & Motivation' },
-  { value: 'tech', label: '📱 Tech & AI News' },
-  { value: 'facts', label: '🌍 Amazing Facts' },
-  { value: 'fitness', label: '🏋️ Fitness & Health' },
-  { value: 'books', label: '📚 Book Summaries' },
-  { value: 'gaming', label: '🕹️ Gaming' },
-  { value: 'cooking', label: '🍳 Cooking Tips' },
-  { value: 'history', label: '🏛️ History & Mystery' },
-  { value: 'mystery', label: '🔮 Unsolved Mysteries' },
+  { v:'finance',    l:'💰 Personal Finance' },
+  { v:'motivation', l:'🧠 Mindset & Motivation' },
+  { v:'tech',       l:'📱 Tech & AI News' },
+  { v:'facts',      l:'🌍 Amazing Facts' },
+  { v:'fitness',    l:'🏋️ Fitness & Health' },
+  { v:'books',      l:'📚 Book Summaries' },
+  { v:'gaming',     l:'🕹️ Gaming' },
+  { v:'cooking',    l:'🍳 Cooking Tips' },
+  { v:'history',    l:'🏛️ History' },
+  { v:'mystery',    l:'🔮 Mystery' },
 ];
 
-const VOICES = ['deep_male', 'calm_female', 'energetic', 'british', 'asmr'];
-const STYLES = ['Cinematic', 'Minimalist', 'Animated', 'News Style', 'Lo-Fi'];
+const VOICES = [
+  { v:'deep_male',   l:'Deep Male' },
+  { v:'calm_female', l:'Calm Female' },
+  { v:'energetic',   l:'Energetic' },
+  { v:'british',     l:'British' },
+  { v:'asmr',        l:'ASMR Soft' },
+];
+
+const STYLES = ['Cinematic','Minimalist','Animated','News Style','Lo-Fi'];
 const DURATIONS = [15, 30, 60, 90];
 
-const STATUS_LABELS = {
-  pending: 'Queued...',
-  scripting: '🧠 Gemini writing script...',
-  voicing: '🎙 ElevenLabs generating voice...',
+const STATUS_MSG = {
+  pending:        '⏳ Queued — starting soon...',
+  scripting:      '🧠 Gemini AI writing your script...',
+  voicing:        '🎙 ElevenLabs generating voiceover...',
   fetching_broll: '🎬 Fetching HD footage from Pexels...',
-  rendering: '⚙️ Assembling video assets...',
-  scheduled: '✅ Video ready!',
-  published: '✅ Published to YouTube!',
-  failed: '❌ Failed — try again',
+  rendering:      '⚙️ Assembling video assets...',
+  uploading:      '📤 Saving to Supabase Storage...',
+  scheduled:      '✅ Video ready! All assets assembled.',
+  published:      '✅ Published to YouTube!',
+  failed:         '❌ Generation failed.',
 };
 
-const PROGRESS = { pending: 0, scripting: 20, voicing: 40, fetching_broll: 60, rendering: 80, scheduled: 100, published: 100, failed: 0 };
+const STATUS_PROGRESS = {
+  pending:5, scripting:20, voicing:45, fetching_broll:65,
+  rendering:82, uploading:92, scheduled:100, published:100, failed:0,
+};
 
+// ── Helpers ────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts.headers || {}),
+    },
+  });
+  if (res.status === 401) { window.location.href = '/login'; throw new Error('Not authenticated'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed ${res.status}`);
+  return data;
+}
+
+// ── Main Dashboard Component ──────────────────────────────────
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const [tab, setTab] = useState('generate');
 
-  // Generator state
+  // Generator
   const [niche, setNiche] = useState('finance');
   const [duration, setDuration] = useState(30);
   const [style, setStyle] = useState('Cinematic');
   const [voice, setVoice] = useState('deep_male');
-  const [customPrompt, setCustomPrompt] = useState('');
+  const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [currentVideo, setCurrentVideo] = useState(null);
-  const [progress, setProgress] = useState(0);
-  const [statusMsg, setStatusMsg] = useState('');
-  const [script, setScript] = useState(null);
+  const [genProgress, setGenProgress] = useState(0);
+  const [genMsg, setGenMsg] = useState('');
+  const [generatedVideo, setGeneratedVideo] = useState(null);
+  const [genError, setGenError] = useState('');
 
-  // Videos list
+  // Videos
   const [videos, setVideos] = useState([]);
-  const [channels, setChannels] = useState([]);
+  const [videosLoading, setVideosLoading] = useState(false);
 
+  // Admin
+  const [adminData, setAdminData] = useState(null);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [grantEmail, setGrantEmail] = useState('');
+  const [grantCredits, setGrantCredits] = useState(100);
+  const [grantPlan, setGrantPlan] = useState('creator');
+  const [grantMsg, setGrantMsg] = useState('');
+
+  // ── Auth ────────────────────────────────────────────────────
   useEffect(() => {
-    checkAuth();
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { window.location.href = '/login'; return; }
+      setUser(session.user);
+      await refreshProfile(session.user.id);
+      setAuthLoading(false);
+    });
   }, []);
 
-  async function checkAuth() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = '/login'; return; }
-    setUser(user);
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    setProfile(p);
-    await loadVideos(user.id);
-    await loadChannels(user.id);
-    setLoading(false);
-  }
-
-  async function loadVideos(uid) {
-    const { data } = await supabase.from('videos').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(20);
-    setVideos(data || []);
-  }
-
-  async function loadChannels(uid) {
-    const { data } = await supabase.from('channels').select('*').eq('user_id', uid);
-    setChannels(data || []);
+  async function refreshProfile(uid) {
+    const { data } = await supabase.from('profiles').select('*').eq('id', uid).single();
+    setProfile(data);
+    return data;
   }
 
   async function signOut() {
@@ -88,90 +113,125 @@ export default function Dashboard() {
     window.location.href = '/';
   }
 
-  async function generateVideo() {
-    if (generating) return;
-    if (!profile?.video_credits || profile.video_credits <= 0) {
-      alert('No credits remaining. Please upgrade your plan.');
-      return;
+  // ── Load Videos ──────────────────────────────────────────────
+  const loadVideos = useCallback(async () => {
+    setVideosLoading(true);
+    try {
+      const data = await apiFetch('/api/videos/list');
+      setVideos(data.videos || []);
+    } catch (e) { console.error(e); }
+    setVideosLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && (tab === 'videos' || tab === 'generate')) loadVideos();
+  }, [tab, authLoading]);
+
+  // ── Load Admin Data ──────────────────────────────────────────
+  useEffect(() => {
+    if (tab === 'admin' && profile?.is_admin && !adminData) {
+      setAdminLoading(true);
+      apiFetch('/api/admin/stats').then(d => { setAdminData(d); setAdminLoading(false); }).catch(() => setAdminLoading(false));
     }
+  }, [tab, profile]);
+
+  // ── Generate Video ───────────────────────────────────────────
+  async function startGeneration() {
+    if (generating) return;
     setGenerating(true);
-    setScript(null);
-    setProgress(0);
-    setStatusMsg('Starting generation...');
-    setCurrentVideo(null);
+    setGenProgress(5);
+    setGenMsg('⏳ Queued — starting soon...');
+    setGenError('');
+    setGeneratedVideo(null);
 
     try {
-      const res = await fetch('/api/videos/generate', {
+      const data = await apiFetch('/api/videos/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niche, duration, style: style.toLowerCase().replace(' ', '_'), voiceId: voice, customPrompt }),
+        body: JSON.stringify({ niche, duration, style, voiceId: voice, customPrompt: prompt }),
       });
-
-      if (res.status === 401) { window.location.href = '/login'; return; }
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Generation failed');
-      }
-
-      const { videoId } = await res.json();
-      setCurrentVideo(videoId);
-      await pollStatus(videoId);
+      pollVideo(data.videoId);
     } catch (e) {
-      setStatusMsg('❌ Error: ' + e.message);
+      setGenError(e.message);
       setGenerating(false);
+      setGenProgress(0);
+      setGenMsg('');
     }
   }
 
-  async function pollStatus(videoId) {
-    const maxAttempts = 60;
+  function pollVideo(videoId) {
     let attempts = 0;
+    const maxAttempts = 90; // 4.5 min max
 
-    const poll = async () => {
+    const check = async () => {
       try {
-        const res = await fetch(`/api/videos/${videoId}/status`);
-        if (!res.ok) { setTimeout(poll, 3000); return; }
-        const data = await res.json();
+        const data = await apiFetch(`/api/videos/${videoId}/status`);
+        setGenProgress(data.progress || 0);
+        setGenMsg(STATUS_MSG[data.status] || data.message || '');
 
-        setProgress(data.progress || 0);
-        setStatusMsg(STATUS_LABELS[data.status] || data.message || '');
-
-        if (data.status === 'scheduled' || data.status === 'published') {
+        if (data.isReady) {
+          setGeneratedVideo(data);
           setGenerating(false);
-          if (data.seo_title) {
-            setScript({ title: data.seo_title, score: data.viral_score, youtubeUrl: data.youtube_url });
-          }
-          // Refresh profile credits
-          const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-          setProfile(p);
-          await loadVideos(user.id);
+          await refreshProfile(user.id);
+          await loadVideos();
           return;
         }
 
         if (data.status === 'failed') {
+          setGenError('Generation failed: ' + (data.error_message || 'Unknown error. Check Vercel logs.'));
           setGenerating(false);
-          setStatusMsg('❌ Failed: ' + (data.error_message || 'Unknown error'));
+          setGenProgress(0);
           return;
         }
 
         attempts++;
-        if (attempts < maxAttempts) setTimeout(poll, 3000);
-        else { setGenerating(false); setStatusMsg('⚠️ Taking longer than expected — check Videos tab'); }
+        if (attempts < maxAttempts) setTimeout(check, 3000);
+        else {
+          setGenMsg('⚠️ Taking longer than expected. Check the Videos tab.');
+          setGenerating(false);
+        }
       } catch (e) {
-        setTimeout(poll, 5000);
+        attempts++;
+        if (attempts < maxAttempts) setTimeout(check, 5000);
+        else setGenerating(false);
       }
     };
 
-    setTimeout(poll, 2000);
+    setTimeout(check, 2000);
   }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#060610', color: '#f0eeff', fontFamily: 'DM Sans,sans-serif' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-        <p>Loading your dashboard...</p>
-      </div>
+  // ── Admin: Grant Credits ─────────────────────────────────────
+  async function handleGrant() {
+    setGrantMsg('');
+    if (!grantEmail) { setGrantMsg('Enter an email'); return; }
+    try {
+      // Find user by email
+      const { data: targetProfile } = await supabase.from('profiles').select('id, email').eq('email', grantEmail).single();
+      if (!targetProfile) { setGrantMsg('User not found — they must sign up first'); return; }
+
+      await apiFetch('/api/admin/grant-credits', {
+        method: 'POST',
+        body: JSON.stringify({ targetUserId: targetProfile.id, credits: Number(grantCredits), plan: grantPlan }),
+      });
+      setGrantMsg(`✅ Granted ${grantCredits} credits + ${grantPlan} plan to ${grantEmail}`);
+      // Refresh admin data
+      const data = await apiFetch('/api/admin/stats');
+      setAdminData(data);
+    } catch (e) {
+      setGrantMsg('❌ ' + e.message);
+    }
+  }
+
+  // ── Loading State ────────────────────────────────────────────
+  if (authLoading) return (
+    <div style={{ display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#060610',color:'#f0eeff',fontFamily:'DM Sans,sans-serif',flexDirection:'column',gap:'1rem' }}>
+      <div style={{ width:40,height:40,border:'3px solid rgba(124,92,252,.3)',borderTopColor:'#7c5cfc',borderRadius:'50%',animation:'spin 1s linear infinite' }} />
+      <p style={{ color:'#8882aa' }}>Loading your dashboard...</p>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
+
+  const isAdmin = profile?.is_admin;
+  const credits = profile?.video_credits ?? 0;
 
   return (
     <>
@@ -179,146 +239,196 @@ export default function Dashboard() {
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'DM Sans',sans-serif;background:#060610;color:#f0eeff;min-height:100vh}
-        h1,h2,h3,h4{font-family:'Syne',sans-serif}
-        .layout{display:flex;min-height:100vh}
-        .sidebar{width:220px;background:#0c0c20;border-right:1px solid rgba(124,92,252,.2);padding:1.2rem;flex-shrink:0;display:flex;flex-direction:column}
-        .logo{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;margin-bottom:1.5rem;padding:.5rem}
-        .logo span{color:#c34bff}
-        .nav-item{display:flex;align-items:center;gap:10px;padding:.65rem .9rem;border-radius:9px;cursor:pointer;font-size:.88rem;color:#8882aa;transition:all .2s;margin-bottom:3px;border:none;background:transparent;width:100%;text-align:left}
-        .nav-item:hover{background:rgba(124,92,252,.1);color:#f0eeff}
-        .nav-item.active{background:rgba(124,92,252,.18);color:#c4b8ff}
-        .nav-icon{font-size:1rem;width:20px;text-align:center}
-        .sidebar-bottom{margin-top:auto}
-        .credit-box{background:rgba(124,92,252,.1);border:1px solid rgba(124,92,252,.2);border-radius:10px;padding:.8rem;margin-bottom:1rem}
-        .credit-label{font-size:.7rem;color:#8882aa;margin-bottom:4px}
-        .credit-num{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:#c34bff}
-        .credit-sub{font-size:.68rem;color:#8882aa}
-        .sign-out{display:flex;align-items:center;gap:8px;padding:.65rem .9rem;border-radius:9px;cursor:pointer;font-size:.85rem;color:#8882aa;transition:all .2s;border:none;background:transparent;width:100%;text-align:left}
-        .sign-out:hover{background:rgba(255,77,100,.1);color:#ff4d64}
-        .main{flex:1;overflow:auto;padding:2rem}
-        .page-title{font-size:1.6rem;margin-bottom:.4rem}
-        .page-sub{color:#8882aa;font-size:.88rem;margin-bottom:1.8rem}
+        h1,h2,h3,h4{font-family:'Syne',sans-serif;font-weight:800}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-        /* Generator */
-        .gen-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
-        @media(max-width:900px){.gen-grid{grid-template-columns:1fr}.sidebar{display:none}}
-        .panel{background:rgba(20,18,45,.9);border:1px solid rgba(124,92,252,.2);border-radius:16px;padding:1.5rem}
-        .panel h3{font-size:1rem;margin-bottom:1.2rem;color:#c4b8ff}
-        .field-group{margin-bottom:1rem}
-        .fl{font-size:.7rem;color:#8882aa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:block}
-        select,textarea{width:100%;background:#0a0a1e;border:1px solid rgba(124,92,252,.2);color:#f0eeff;padding:.62rem .85rem;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.85rem;outline:none;transition:border-color .2s}
-        select:focus,textarea:focus{border-color:#7c5cfc}
+        /* Layout */
+        .layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+        @media(max-width:768px){.layout{grid-template-columns:1fr}.sidebar{display:none}}
+
+        /* Sidebar */
+        .sidebar{background:#080818;border-right:1px solid rgba(124,92,252,.18);padding:1.2rem 1rem;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+        .logo{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:800;padding:.5rem .6rem;margin-bottom:1.2rem;letter-spacing:-.02em}
+        .logo em{color:#c34bff;font-style:normal}
+        .nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:.62rem .85rem;background:transparent;border:none;color:#8882aa;font-family:'DM Sans',sans-serif;font-size:.87rem;border-radius:9px;cursor:pointer;text-align:left;transition:all .18s;margin-bottom:2px}
+        .nav-btn:hover{background:rgba(124,92,252,.1);color:#e0dcff}
+        .nav-btn.active{background:rgba(124,92,252,.18);color:#c4b8ff}
+        .nav-icon{font-size:.95rem;width:18px;text-align:center;flex-shrink:0}
+        .sidebar-bottom{margin-top:auto;padding-top:1rem;border-top:1px solid rgba(124,92,252,.12)}
+        .credit-card{background:rgba(124,92,252,.1);border:1px solid rgba(124,92,252,.2);border-radius:12px;padding:.9rem;margin-bottom:.8rem}
+        .credit-label{font-size:.68rem;color:#8882aa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+        .credit-num{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;line-height:1;color:${credits > 0 ? '#c34bff' : '#ff4d64'}}
+        .credit-sub{font-size:.68rem;color:#8882aa;margin-top:3px}
+        .plan-pill{display:inline-block;padding:2px 10px;border-radius:50px;font-size:.68rem;font-weight:600;margin-top:6px;text-transform:uppercase;letter-spacing:.04em}
+        .plan-free{background:rgba(136,130,170,.12);color:#8882aa;border:1px solid rgba(136,130,170,.25)}
+        .plan-starter{background:rgba(46,204,138,.08);color:#2ecc8a;border:1px solid rgba(46,204,138,.25)}
+        .plan-creator{background:rgba(124,92,252,.1);color:#b59dff;border:1px solid rgba(124,92,252,.3)}
+        .plan-agency{background:rgba(195,75,255,.1);color:#c34bff;border:1px solid rgba(195,75,255,.3)}
+        .signout-btn{display:flex;align-items:center;gap:8px;width:100%;padding:.62rem .85rem;background:transparent;border:none;color:#8882aa;font-family:'DM Sans',sans-serif;font-size:.85rem;border-radius:9px;cursor:pointer;transition:all .18s}
+        .signout-btn:hover{background:rgba(255,77,100,.1);color:#ff6b7e}
+
+        /* Main */
+        .main{padding:2rem;overflow-y:auto;animation:fadeIn .3s ease}
+        .page-hdr{margin-bottom:1.8rem}
+        .page-title{font-size:1.7rem;margin-bottom:.3rem}
+        .page-sub{color:#8882aa;font-size:.88rem}
+
+        /* Cards */
+        .card{background:rgba(20,18,45,.95);border:1px solid rgba(124,92,252,.18);border-radius:16px;padding:1.5rem}
+        .card-title{font-size:.95rem;font-weight:700;color:#c4b8ff;margin-bottom:1.2rem;display:flex;align-items:center;gap:8px}
+
+        /* Form elements */
+        .fl{font-size:.68rem;color:#8882aa;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;font-weight:500}
+        select,textarea,input{width:100%;background:#0a0a1e;border:1px solid rgba(124,92,252,.22);color:#f0eeff;padding:.65rem .9rem;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.87rem;outline:none;transition:border-color .2s}
+        select:focus,textarea:focus,input:focus{border-color:#7c5cfc}
         select option{background:#0a0a1e}
-        textarea{resize:none;height:60px}
+        textarea{resize:none}
+        .fgroup{margin-bottom:1rem}
+
+        /* Tags */
         .tags{display:flex;flex-wrap:wrap;gap:6px}
-        .tag{padding:4px 12px;border-radius:50px;font-size:.75rem;cursor:pointer;border:1px solid rgba(124,92,252,.2);background:#0a0a1e;color:#8882aa;transition:all .2s}
-        .tag.on{background:rgba(124,92,252,.18);border-color:#7c5cfc;color:#c4b8ff}
-        .gen-btn{width:100%;padding:.85rem;background:linear-gradient(135deg,#7c5cfc,#c34bff);border:none;color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:.92rem;border-radius:10px;cursor:pointer;margin-top:.6rem;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px}
-        .gen-btn:hover:not(:disabled){opacity:.88}.gen-btn:disabled{opacity:.5;cursor:not-allowed}
+        .tag{padding:5px 12px;border-radius:50px;font-size:.75rem;cursor:pointer;border:1px solid rgba(124,92,252,.2);background:#0a0a1e;color:#8882aa;transition:all .18s;user-select:none}
+        .tag:hover{border-color:rgba(124,92,252,.5);color:#e0dcff}
+        .tag.on{background:rgba(124,92,252,.2);border-color:#7c5cfc;color:#c4b8ff}
 
-        /* Preview */
-        .preview-box{background:#040410;border:2px dashed rgba(124,92,252,.2);border-radius:12px;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:1rem;margin-bottom:.8rem;text-align:center}
-        .preview-box.ready{background:linear-gradient(160deg,rgba(124,92,252,.18),rgba(6,6,16,.95));border-style:solid;border-color:rgba(124,92,252,.4)}
-        .pbar{width:100%;height:4px;background:#0a0a1e;border-radius:3px;overflow:hidden;margin-top:8px}
-        .pbar-fill{height:100%;background:linear-gradient(90deg,#7c5cfc,#c34bff);border-radius:3px;transition:width .4s}
-        .pstatus{font-size:.75rem;color:#8882aa;margin-top:5px;min-height:18px}
-        .score-pill{padding:3px 10px;border-radius:50px;font-size:.72rem;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:#2ecc8a;display:inline-block;margin-top:4px}
+        /* Buttons */
+        .btn-primary{background:linear-gradient(135deg,#7c5cfc,#c34bff);color:#fff;border:none;padding:.85rem 1.5rem;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+        .btn-primary:hover:not(:disabled){opacity:.88;transform:translateY(-1px)}
+        .btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none}
+        .btn-outline{background:transparent;color:#c4b8ff;border:1px solid rgba(124,92,252,.35);padding:.7rem 1.2rem;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;transition:all .2s}
+        .btn-outline:hover{background:rgba(124,92,252,.1)}
+        .btn-red{background:#ff0000;color:#fff;border:none;padding:.82rem 1.4rem;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;cursor:pointer;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+        .btn-red:hover{opacity:.88}
+        .btn-success{background:rgba(46,204,138,.15);color:#2ecc8a;border:1px solid rgba(46,204,138,.3);padding:.7rem 1.2rem;border-radius:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer}
 
-        /* Videos list */
-        .video-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(20,18,45,.6);border-radius:10px;border:1px solid rgba(124,92,252,.12);margin-bottom:6px}
-        .v-thumb{width:32px;height:44px;border-radius:6px;flex-shrink:0}
-        .v-info{flex:1;min-width:0}
-        .v-title{font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .v-meta{font-size:.7rem;color:#8882aa;margin-top:2px}
-        .v-status{font-size:.65rem;padding:3px 8px;border-radius:50px;white-space:nowrap}
-        .v-status.pub{background:rgba(46,204,138,.1);color:#2ecc8a;border:1px solid rgba(46,204,138,.25)}
-        .v-status.sch{background:rgba(251,192,45,.1);color:#fbc02d;border:1px solid rgba(251,192,45,.25)}
-        .v-status.ren{background:rgba(124,92,252,.15);color:#b59dff;border:1px solid rgba(124,92,252,.25)}
-        .v-status.fail{background:rgba(255,77,100,.1);color:#ff4d64;border:1px solid rgba(255,77,100,.25)}
+        /* Grid layouts */
+        .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+        @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+        .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+        @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr)}}
 
-        /* Stats */
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
-        @media(max-width:700px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
-        .stat-card{background:rgba(20,18,45,.9);border:1px solid rgba(124,92,252,.15);border-radius:14px;padding:1.2rem}
-        .stat-label{font-size:.72rem;color:#8882aa;margin-bottom:6px}
-        .stat-num{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800}
-        .stat-sub{font-size:.7rem;color:#8882aa;margin-top:2px}
+        /* Progress bar */
+        .pbar-wrap{width:100%;height:5px;background:rgba(124,92,252,.12);border-radius:3px;overflow:hidden;margin-top:8px}
+        .pbar-fill{height:100%;background:linear-gradient(90deg,#7c5cfc,#c34bff);border-radius:3px;transition:width .5s ease}
 
-        /* YouTube connect */
-        .yt-btn{width:100%;padding:.85rem;background:#ff0000;color:#fff;border:none;font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;border-radius:10px;cursor:pointer;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px}
-        .yt-btn:hover{opacity:.88}
-        .yt-connected{padding:10px 14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:10px;color:#2ecc8a;font-size:.85rem;margin-bottom:1rem}
+        /* Preview box */
+        .preview{background:#040410;border:2px dashed rgba(124,92,252,.2);border-radius:12px;min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:1.2rem;text-align:center;margin-bottom:.8rem;transition:all .3s}
+        .preview.ready{border-style:solid;border-color:rgba(46,204,138,.4);background:linear-gradient(160deg,rgba(46,204,138,.06),rgba(6,6,16,.9))}
+        .preview.active{border-color:rgba(124,92,252,.4);background:linear-gradient(160deg,rgba(124,92,252,.08),rgba(6,6,16,.9))}
 
-        /* Plan badge */
-        .plan-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:50px;font-size:.72rem;font-weight:600}
-        .plan-badge.free{background:rgba(136,130,170,.1);border:1px solid rgba(136,130,170,.25);color:#8882aa}
-        .plan-badge.agency{background:rgba(195,75,255,.1);border:1px solid rgba(195,75,255,.3);color:#c34bff}
-        .plan-badge.creator{background:rgba(124,92,252,.1);border:1px solid rgba(124,92,252,.3);color:#b59dff}
-        .plan-badge.starter{background:rgba(46,204,138,.08);border:1px solid rgba(46,204,138,.25);color:#2ecc8a}
+        /* Video rows */
+        .video-row{display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(13,12,30,.8);border:1px solid rgba(124,92,252,.12);border-radius:10px;margin-bottom:6px;transition:border-color .2s}
+        .video-row:hover{border-color:rgba(124,92,252,.3)}
+        .vthumb{width:36px;height:48px;border-radius:7px;flex-shrink:0;background:linear-gradient(135deg,rgba(124,92,252,.4),rgba(195,75,255,.25))}
+        .vinfo{flex:1;min-width:0}
+        .vtitle{font-size:.84rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+        .vmeta{font-size:.7rem;color:#8882aa}
+        .vstatus{font-size:.65rem;padding:3px 9px;border-radius:50px;white-space:nowrap;font-weight:600;flex-shrink:0}
+        .vstatus.scheduled,.vstatus.published{background:rgba(46,204,138,.1);color:#2ecc8a;border:1px solid rgba(46,204,138,.25)}
+        .vstatus.scripting,.vstatus.voicing,.vstatus.fetching_broll,.vstatus.rendering{background:rgba(124,92,252,.15);color:#b59dff;border:1px solid rgba(124,92,252,.25)}
+        .vstatus.failed{background:rgba(255,77,100,.1);color:#ff6b7e;border:1px solid rgba(255,77,100,.3)}
+        .vstatus.pending{background:rgba(251,192,45,.08);color:#fbc02d;border:1px solid rgba(251,192,45,.25)}
 
-        .empty-state{text-align:center;padding:3rem;color:#8882aa}
-        .empty-state p{margin-top:.5rem;font-size:.88rem}
-        .info-box{background:rgba(124,92,252,.08);border:1px solid rgba(124,92,252,.2);border-radius:10px;padding:10px 14px;font-size:.82rem;color:#b59dff;margin-bottom:1rem}
+        /* Alert boxes */
+        .alert-err{padding:10px 14px;background:rgba(255,77,100,.1);border:1px solid rgba(255,77,100,.3);border-radius:9px;color:#ff6b7e;font-size:.83rem;margin-bottom:1rem}
+        .alert-ok{padding:10px 14px;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.3);border-radius:9px;color:#2ecc8a;font-size:.83rem;margin-bottom:1rem}
+        .alert-info{padding:10px 14px;background:rgba(124,92,252,.1);border:1px solid rgba(124,92,252,.25);border-radius:9px;color:#b59dff;font-size:.83rem;margin-bottom:1rem}
+
+        /* Stat cards */
+        .stat-card{background:rgba(20,18,45,.95);border:1px solid rgba(124,92,252,.15);border-radius:14px;padding:1.2rem}
+        .stat-label{font-size:.7rem;color:#8882aa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+        .stat-num{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1}
+        .stat-sub{font-size:.7rem;color:#8882aa;margin-top:4px}
+
+        /* Table */
+        .data-table{width:100%;border-collapse:collapse;font-size:.82rem}
+        .data-table th{padding:8px 12px;text-align:left;color:#8882aa;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid rgba(124,92,252,.15)}
+        .data-table td{padding:9px 12px;border-bottom:1px solid rgba(124,92,252,.08)}
+        .data-table tr:last-child td{border-bottom:none}
+        .data-table tr:hover td{background:rgba(124,92,252,.04)}
+
+        .empty{text-align:center;padding:3rem;color:#8882aa}
+        .empty-icon{font-size:2.5rem;margin-bottom:.8rem;opacity:.5}
+        .spin{animation:spin 1s linear infinite;display:inline-block}
+        .score-pill{padding:2px 9px;border-radius:50px;font-size:.7rem;background:rgba(46,204,138,.1);border:1px solid rgba(46,204,138,.25);color:#2ecc8a;margin-left:6px}
       `}</style>
 
       <div className="layout">
-        {/* SIDEBAR */}
-        <div className="sidebar">
-          <div className="logo">Reel<span>Mind</span> AI</div>
+        {/* ════ SIDEBAR ════ */}
+        <aside className="sidebar">
+          <div className="logo">Reel<em>Mind</em> AI</div>
 
           {[
-            { id: 'generate', icon: '🎬', label: 'Generate Video' },
-            { id: 'videos', icon: '📹', label: 'My Videos' },
-            { id: 'youtube', icon: '▶', label: 'YouTube' },
-            { id: 'account', icon: '👤', label: 'Account' },
-            ...(profile?.is_admin ? [{ id: 'admin', icon: '⚡', label: 'Admin Panel' }] : []),
+            { id:'generate', icon:'🎬', label:'Generate Video' },
+            { id:'videos',   icon:'📹', label:'My Videos' },
+            { id:'youtube',  icon:'▶',  label:'YouTube' },
+            { id:'account',  icon:'👤', label:'Account' },
+            ...(isAdmin ? [{ id:'admin', icon:'⚡', label:'Admin Panel' }] : []),
           ].map(item => (
-            <button key={item.id} className={`nav-item${tab === item.id ? ' active' : ''}`} onClick={() => setTab(item.id)}>
-              <span className="nav-icon">{item.icon}</span> {item.label}
+            <button key={item.id}
+              className={`nav-btn${tab === item.id ? ' active' : ''}`}
+              onClick={() => setTab(item.id)}>
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+              {item.id === 'admin' && <span style={{ marginLeft:'auto', fontSize:'.62rem', background:'rgba(195,75,255,.2)', color:'#c34bff', padding:'1px 6px', borderRadius:'50px' }}>ADMIN</span>}
             </button>
           ))}
 
           <div className="sidebar-bottom">
-            <div className="credit-box">
+            <div className="credit-card">
               <div className="credit-label">Video Credits</div>
-              <div className="credit-num">{profile?.video_credits ?? 0}</div>
-              <div className="credit-sub">{profile?.plan === 'agency' ? 'Unlimited access' : 'remaining this month'}</div>
+              <div className="credit-num">{isAdmin ? '∞' : credits}</div>
+              <div className="credit-sub">{isAdmin ? 'Admin — unlimited' : 'remaining this month'}</div>
+              <span className={`plan-pill plan-${profile?.plan || 'free'}`}>{profile?.plan || 'free'} plan</span>
             </div>
-            <button className="sign-out" onClick={signOut}>↩ Sign out</button>
+            <div style={{ fontSize:'.72rem', color:'#8882aa', padding:'0 .5rem', marginBottom:'.6rem', wordBreak:'break-all' }}>{user?.email}</div>
+            <button className="signout-btn" onClick={signOut}>↩ Sign out</button>
           </div>
-        </div>
+        </aside>
 
-        {/* MAIN CONTENT */}
-        <div className="main">
+        {/* ════ MAIN CONTENT ════ */}
+        <main className="main">
 
-          {/* ── GENERATE TAB ── */}
+          {/* ─── GENERATE ─────────────────────────────── */}
           {tab === 'generate' && (
             <>
-              <h1 className="page-title">Video Generator</h1>
-              <p className="page-sub">Configure your reel and click Generate — Gemini AI writes the script, ElevenLabs adds the voice, Pexels provides footage.</p>
+              <div className="page-hdr">
+                <h1 className="page-title">🎬 Video Generator</h1>
+                <p className="page-sub">Configure your reel and click Generate. Gemini writes the script, ElevenLabs adds voice, Pexels provides footage.</p>
+              </div>
 
-              <div className="gen-grid">
-                {/* Left: Controls */}
-                <div className="panel">
-                  <h3>⚙️ Video Settings</h3>
+              {!isAdmin && credits <= 0 && (
+                <div className="alert-err">
+                  ⚠️ You have 0 credits remaining. <a href="/#pricing" style={{ color:'#c34bff' }}>Upgrade your plan</a> to generate more videos.
+                </div>
+              )}
 
-                  <div className="field-group">
-                    <span className="fl">Niche / Topic</span>
+              <div className="grid2">
+                {/* Left panel: Settings */}
+                <div className="card">
+                  <div className="card-title">⚙️ Video Settings</div>
+
+                  <div className="fgroup">
+                    <span className="fl">Niche / Topic Category</span>
                     <select value={niche} onChange={e => setNiche(e.target.value)}>
-                      {NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+                      {NICHES.map(n => <option key={n.v} value={n.v}>{n.l}</option>)}
                     </select>
                   </div>
 
-                  <div className="field-group">
-                    <span className="fl">Duration</span>
+                  <div className="fgroup">
+                    <span className="fl">Video Duration</span>
                     <div className="tags">
                       {DURATIONS.map(d => (
-                        <span key={d} className={`tag${duration === d ? ' on' : ''}`} onClick={() => setDuration(d)}>{d}s</span>
+                        <span key={d} className={`tag${duration === d ? ' on' : ''}`} onClick={() => setDuration(d)}>
+                          {d}s {d <= 30 ? 'Short' : d <= 60 ? 'Medium' : 'Long'}
+                        </span>
                       ))}
                     </div>
                   </div>
 
-                  <div className="field-group">
+                  <div className="fgroup">
                     <span className="fl">Visual Style</span>
                     <div className="tags">
                       {STYLES.map(s => (
@@ -327,244 +437,410 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="field-group">
+                  <div className="fgroup">
                     <span className="fl">AI Voice</span>
                     <div className="tags">
                       {VOICES.map(v => (
-                        <span key={v} className={`tag${voice === v ? ' on' : ''}`} onClick={() => setVoice(v)}>
-                          {v.replace('_', ' ')}
-                        </span>
+                        <span key={v.v} className={`tag${voice === v.v ? ' on' : ''}`} onClick={() => setVoice(v.v)}>{v.l}</span>
                       ))}
                     </div>
                   </div>
 
-                  <div className="field-group">
+                  <div className="fgroup">
                     <span className="fl">Custom Prompt (optional)</span>
-                    <textarea placeholder={`e.g. Top 5 ways to save money in 2025...`} value={customPrompt} onChange={e => setCustomPrompt(e.target.value)} />
+                    <textarea
+                      rows={3}
+                      placeholder={`e.g. "Top 5 money habits that changed my life" — leave blank for AI to decide`}
+                      value={prompt}
+                      onChange={e => setPrompt(e.target.value)}
+                    />
                   </div>
 
-                  <button className="gen-btn" onClick={generateVideo} disabled={generating}>
-                    {generating ? '⏳ Generating...' : '✦ Generate AI Video'}
+                  <button
+                    className="btn-primary"
+                    style={{ width:'100%', marginTop:'.4rem' }}
+                    onClick={startGeneration}
+                    disabled={generating || (!isAdmin && credits <= 0)}>
+                    {generating
+                      ? <><span className="spin">⚙️</span> Generating...</>
+                      : '✦ Generate AI Video'}
                   </button>
 
-                  {profile?.video_credits <= 0 && (
-                    <div className="info-box" style={{ marginTop: '10px', background: 'rgba(255,77,100,.08)', borderColor: 'rgba(255,77,100,.25)', color: '#ff4d64' }}>
-                      ⚠️ No credits remaining — <a href="/#pricing" style={{ color: '#c34bff' }}>upgrade your plan</a>
-                    </div>
-                  )}
+                  {genError && <div className="alert-err" style={{ marginTop:'10px' }}>{genError}</div>}
                 </div>
 
-                {/* Right: Preview */}
-                <div className="panel">
-                  <h3>📺 Preview</h3>
+                {/* Right panel: Preview */}
+                <div className="card">
+                  <div className="card-title">📺 Preview & Status</div>
 
-                  <div className={`preview-box${script ? ' ready' : ''}`}>
-                    {script ? (
+                  <div className={`preview${generating ? ' active' : generatedVideo ? ' ready' : ''}`}>
+                    {generatedVideo ? (
                       <>
-                        <div style={{ fontSize: '1.8rem' }}>✅</div>
-                        <p style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: '.92rem', maxWidth: 240, textAlign: 'center', lineHeight: 1.3 }}>
-                          {script.title}
+                        <div style={{ fontSize:'2rem' }}>✅</div>
+                        <p style={{ fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'.9rem', maxWidth:240, lineHeight:1.35, textAlign:'center' }}>
+                          {generatedVideo.seo_title}
                         </p>
-                        {script.score && <div className="score-pill">⚡ Viral Score: {script.score}/100</div>}
-                        {script.youtubeUrl && (
-                          <a href={script.youtubeUrl} target="_blank" rel="noreferrer"
-                            style={{ marginTop: 8, padding: '6px 14px', background: '#ff0000', color: '#fff', borderRadius: 7, fontSize: '.78rem', textDecoration: 'none', fontWeight: 700 }}>
+                        {generatedVideo.viral_score && (
+                          <span className="score-pill">⚡ Viral Score: {generatedVideo.viral_score}/100</span>
+                        )}
+                        {generatedVideo.voiceover_url && (
+                          <div style={{ width:'100%', marginTop:'8px' }}>
+                            <p style={{ fontSize:'.68rem', color:'#8882aa', marginBottom:'5px' }}>🎙 AI Voiceover:</p>
+                            <audio controls style={{ width:'100%', height:32 }} src={generatedVideo.voiceover_url}>
+                              Your browser does not support audio.
+                            </audio>
+                          </div>
+                        )}
+                        {generatedVideo.youtube_url && (
+                          <a href={generatedVideo.youtube_url} target="_blank" rel="noreferrer"
+                            style={{ marginTop:8, padding:'6px 14px', background:'#ff0000', color:'#fff', borderRadius:7, fontSize:'.78rem', textDecoration:'none', fontWeight:700 }}>
                             ▶ View on YouTube
                           </a>
                         )}
                       </>
                     ) : generating ? (
                       <>
-                        <div style={{ fontSize: '1.5rem' }}>⚙️</div>
-                        <p style={{ fontSize: '.82rem', color: '#8882aa' }}>AI is generating your reel...</p>
-                        <p style={{ fontSize: '.72rem', color: 'rgba(136,130,170,.6)' }}>Takes about 30–90 seconds</p>
+                        <div className="spin" style={{ fontSize:'1.8rem' }}>⚙️</div>
+                        <p style={{ fontSize:'.82rem', color:'#c4b8ff', fontWeight:500 }}>AI is generating your reel...</p>
+                        <p style={{ fontSize:'.72rem', color:'#8882aa' }}>Please wait — takes 30–90 seconds</p>
                       </>
                     ) : (
                       <>
-                        <div style={{ fontSize: '1.8rem', opacity: .4 }}>▶</div>
-                        <p style={{ fontSize: '.82rem', color: '#8882aa' }}>Your reel will appear here</p>
-                        <p style={{ fontSize: '.7rem', color: 'rgba(136,130,170,.5)' }}>Configure settings and click Generate</p>
+                        <div style={{ fontSize:'2rem', opacity:.3 }}>▶</div>
+                        <p style={{ fontSize:'.85rem', color:'#8882aa' }}>Your reel will appear here</p>
+                        <p style={{ fontSize:'.72rem', color:'rgba(136,130,170,.5)' }}>Configure settings and click Generate</p>
                       </>
                     )}
                   </div>
 
-                  <div className="pbar"><div className="pbar-fill" style={{ width: progress + '%' }} /></div>
-                  <p className="pstatus">{statusMsg}</p>
-
-                  <div style={{ marginTop: '1.2rem' }}>
-                    <p style={{ fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.06em', color: '#8882aa', marginBottom: 8 }}>Recent Videos</p>
-                    {videos.slice(0, 3).map((v, i) => (
-                      <div className="video-row" key={i}>
-                        <div className="v-thumb" style={{ background: `linear-gradient(135deg,rgba(124,92,252,.5),rgba(195,75,255,.3))` }} />
-                        <div className="v-info">
-                          <div className="v-title">{v.seo_title || `Video — ${v.niche}`}</div>
-                          <div className="v-meta">{v.niche} · {v.duration}s · {new Date(v.created_at).toLocaleDateString()}</div>
-                        </div>
-                        <span className={`v-status ${v.status === 'published' ? 'pub' : v.status === 'scheduled' ? 'sch' : v.status === 'failed' ? 'fail' : 'ren'}`}>
-                          {v.status}
-                        </span>
-                      </div>
-                    ))}
-                    {videos.length === 0 && <p style={{ color: '#8882aa', fontSize: '.82rem', textAlign: 'center', padding: '1rem 0' }}>No videos yet — generate your first one!</p>}
+                  {/* Progress bar */}
+                  <div className="pbar-wrap">
+                    <div className="pbar-fill" style={{ width: genProgress + '%' }} />
                   </div>
+                  <p style={{ fontSize:'.74rem', color:'#8882aa', marginTop:'6px', minHeight:'18px' }}>{genMsg}</p>
+
+                  {/* Recent videos mini-list */}
+                  {videos.length > 0 && (
+                    <div style={{ marginTop:'1.2rem' }}>
+                      <p style={{ fontSize:'.68rem', textTransform:'uppercase', letterSpacing:'.06em', color:'#8882aa', marginBottom:'8px' }}>Recent Generations</p>
+                      {videos.slice(0,3).map(v => (
+                        <div className="video-row" key={v.id}>
+                          <div className="vthumb" />
+                          <div className="vinfo">
+                            <div className="vtitle">{v.seo_title || `${v.niche} — ${v.duration}s`}</div>
+                            <div className="vmeta">{v.niche} · {v.duration}s · {new Date(v.created_at).toLocaleDateString()}</div>
+                          </div>
+                          <span className={`vstatus ${v.status}`}>{v.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
           )}
 
-          {/* ── VIDEOS TAB ── */}
+          {/* ─── VIDEOS ────────────────────────────────── */}
           {tab === 'videos' && (
             <>
-              <h1 className="page-title">My Videos</h1>
-              <p className="page-sub">{videos.length} video{videos.length !== 1 ? 's' : ''} generated</p>
-
-              <div className="stats-grid">
-                <div className="stat-card"><div className="stat-label">Total Generated</div><div className="stat-num">{videos.length}</div></div>
-                <div className="stat-card"><div className="stat-label">Published</div><div className="stat-num">{videos.filter(v => v.status === 'published').length}</div></div>
-                <div className="stat-card"><div className="stat-label">Scheduled</div><div className="stat-num">{videos.filter(v => v.status === 'scheduled').length}</div></div>
-                <div className="stat-card"><div className="stat-label">Credits Left</div><div className="stat-num" style={{ color: '#c34bff' }}>{profile?.video_credits ?? 0}</div></div>
+              <div className="page-hdr">
+                <h1 className="page-title">📹 My Videos</h1>
+                <p className="page-sub">{videos.length} video{videos.length !== 1 ? 's' : ''} generated · {profile?.total_videos_generated || 0} total all time</p>
               </div>
 
-              {videos.length === 0 ? (
-                <div className="empty-state">
-                  <div style={{ fontSize: '3rem' }}>🎬</div>
-                  <p>No videos yet. Go to the Generate tab to create your first reel!</p>
+              <div className="grid4" style={{ marginBottom:'1.5rem' }}>
+                {[
+                  { label:'Total Videos', val: videos.length, color:'#f0eeff' },
+                  { label:'Ready / Published', val: videos.filter(v=>['scheduled','published'].includes(v.status)).length, color:'#2ecc8a' },
+                  { label:'In Progress', val: videos.filter(v=>['pending','scripting','voicing','fetching_broll','rendering'].includes(v.status)).length, color:'#b59dff' },
+                  { label:'Credits Left', val: isAdmin ? '∞' : credits, color:'#c34bff' },
+                ].map(s => (
+                  <div className="stat-card" key={s.label}>
+                    <div className="stat-label">{s.label}</div>
+                    <div className="stat-num" style={{ color:s.color }}>{s.val}</div>
+                  </div>
+                ))}
+              </div>
+
+              {videosLoading ? (
+                <div className="empty"><div className="spin" style={{ fontSize:'1.5rem' }}>⚙️</div><p style={{ marginTop:'1rem' }}>Loading videos...</p></div>
+              ) : videos.length === 0 ? (
+                <div className="empty">
+                  <div className="empty-icon">🎬</div>
+                  <p>No videos yet.</p>
+                  <p style={{ marginTop:'.4rem', fontSize:'.85rem' }}>Go to the Generate tab to create your first AI reel!</p>
+                  <button className="btn-primary" style={{ margin:'1rem auto 0', padding:'.75rem 1.5rem' }} onClick={() => setTab('generate')}>
+                    → Go to Generator
+                  </button>
                 </div>
               ) : (
-                videos.map((v, i) => (
-                  <div className="video-row" key={i} style={{ padding: '12px 16px' }}>
-                    <div className="v-thumb" style={{ width: 40, height: 52, background: `linear-gradient(135deg,rgba(124,92,252,.5),rgba(195,75,255,.3))` }} />
-                    <div className="v-info">
-                      <div className="v-title" style={{ fontSize: '.9rem' }}>{v.seo_title || `${v.niche} video — ${v.duration}s`}</div>
-                      <div className="v-meta">
-                        {v.niche} · {v.duration}s · {v.style} · {v.voice_id?.replace('_', ' ')}
-                        {v.viral_score ? ` · ⚡ Score: ${v.viral_score}/100` : ''}
+                videos.map(v => (
+                  <div className="video-row" key={v.id}>
+                    <div className="vthumb" />
+                    <div className="vinfo">
+                      <div className="vtitle">
+                        {v.seo_title || `${v.niche} video — ${v.duration}s`}
+                        {v.viral_score && <span className="score-pill">⚡ {v.viral_score}/100</span>}
+                      </div>
+                      <div className="vmeta">
+                        {v.niche} · {v.duration}s · {v.style} · {v.voice_id?.replace('_',' ')}
                         {' · '}{new Date(v.created_at).toLocaleDateString()}
+                        {v.error_message && <span style={{ color:'#ff6b7e', marginLeft:8 }}>Error: {v.error_message.slice(0,60)}</span>}
                       </div>
                     </div>
-                    {v.youtube_url && (
-                      <a href={v.youtube_url} target="_blank" rel="noreferrer"
-                        style={{ padding: '5px 12px', background: '#ff0000', color: '#fff', borderRadius: 7, fontSize: '.75rem', textDecoration: 'none', fontWeight: 700, flexShrink: 0, marginRight: 8 }}>
-                        ▶ YouTube
-                      </a>
-                    )}
-                    <span className={`v-status ${v.status === 'published' ? 'pub' : v.status === 'scheduled' ? 'sch' : v.status === 'failed' ? 'fail' : 'ren'}`}>
-                      {v.status}
-                    </span>
+                    <div style={{ display:'flex', gap:'6px', alignItems:'center', flexShrink:0 }}>
+                      {v.voiceover_url && (
+                        <a href={v.voiceover_url} target="_blank" rel="noreferrer"
+                          style={{ padding:'4px 10px', background:'rgba(124,92,252,.15)', border:'1px solid rgba(124,92,252,.3)', color:'#b59dff', borderRadius:6, fontSize:'.72rem', textDecoration:'none', fontWeight:700 }}>
+                          🎙 Audio
+                        </a>
+                      )}
+                      {v.youtube_url && (
+                        <a href={v.youtube_url} target="_blank" rel="noreferrer"
+                          style={{ padding:'4px 10px', background:'rgba(255,0,0,.15)', border:'1px solid rgba(255,0,0,.3)', color:'#ff6b7e', borderRadius:6, fontSize:'.72rem', textDecoration:'none', fontWeight:700 }}>
+                          ▶ YouTube
+                        </a>
+                      )}
+                      <span className={`vstatus ${v.status}`}>{v.status}</span>
+                    </div>
                   </div>
                 ))
               )}
             </>
           )}
 
-          {/* ── YOUTUBE TAB ── */}
+          {/* ─── YOUTUBE ────────────────────────────────── */}
           {tab === 'youtube' && (
             <>
-              <h1 className="page-title">YouTube Channels</h1>
-              <p className="page-sub">Connect your YouTube channel to enable auto-publishing 24/7.</p>
+              <div className="page-hdr">
+                <h1 className="page-title">▶ YouTube Autopilot</h1>
+                <p className="page-sub">Connect your channel to start auto-publishing AI videos 24/7.</p>
+              </div>
 
-              {channels.length > 0 && (
-                <div className="yt-connected">
-                  ✓ {channels.length} channel{channels.length > 1 ? 's' : ''} connected: {channels.map(c => c.channel_name).join(', ')}
+              <div className="grid2">
+                <div className="card">
+                  <div className="card-title">▶ Connect YouTube Channel</div>
+                  <p style={{ color:'#8882aa', fontSize:'.85rem', marginBottom:'1.2rem', lineHeight:1.65 }}>
+                    Click the button below to authorize ReelMind AI. You'll be taken to Google, select your channel, and approve upload permissions. Once connected, we can publish videos automatically.
+                  </p>
+                  {[
+                    'Sign in with Google (secure OAuth 2.0)',
+                    'Select your YouTube channel',
+                    'Grant video upload permission',
+                    'Set your posting schedule',
+                    'Auto-publish starts immediately',
+                  ].map((s,i) => (
+                    <div key={i} style={{ display:'flex', gap:10, alignItems:'center', padding:'8px 12px', background:'rgba(124,92,252,.06)', borderRadius:8, marginBottom:6 }}>
+                      <div style={{ width:22, height:22, borderRadius:'50%', border:'1.5px solid rgba(124,92,252,.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#b59dff', flexShrink:0 }}>{i+1}</div>
+                      <span style={{ fontSize:'.85rem', color:'#c4b8ff' }}>{s}</span>
+                    </div>
+                  ))}
+                  <button className="btn-red" style={{ width:'100%', marginTop:'1rem' }}
+                    onClick={() => window.location.href = '/api/youtube/auth'}>
+                    ▶ &nbsp;Connect YouTube Channel
+                  </button>
+                  <p style={{ fontSize:'.7rem', color:'#8882aa', textAlign:'center', marginTop:'8px' }}>
+                    🔒 Secured by Google OAuth 2.0 · We never store your password
+                  </p>
                 </div>
-              )}
 
-              <div className="panel" style={{ maxWidth: 520 }}>
-                <h3>▶ Connect YouTube Channel</h3>
-                <p style={{ color: '#8882aa', fontSize: '.85rem', marginBottom: '1rem', lineHeight: 1.6 }}>
-                  Click below to authorize ReelMind AI to upload videos to your channel. You will be redirected to Google to approve.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1.2rem' }}>
-                  {['Sign in with Google (secure OAuth)', 'Select your YouTube channel', 'Grant upload permissions', 'Auto-publish starts immediately'].map((s, i) => (
-                    <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '8px 12px', background: 'rgba(124,92,252,.06)', borderRadius: '8px' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', border: '1.5px solid rgba(124,92,252,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#b59dff', flexShrink: 0 }}>{i + 1}</div>
-                      <span style={{ fontSize: '.85rem', color: '#c4b8ff' }}>{s}</span>
+                <div className="card">
+                  <div className="card-title">📅 How Autopilot Works</div>
+                  {[
+                    ['🧠','Gemini writes a fresh script daily','No duplicate content, always unique'],
+                    ['🎙','ElevenLabs generates voiceover','Sounds natural and professional'],
+                    ['🎬','Pexels/Pixabay provides footage','HD portrait video, perfectly matched'],
+                    ['⏰','Your video publishes on schedule','1x, 2x, or 3x per day — you choose'],
+                    ['📊','Analytics sync back automatically','View counts and revenue in dashboard'],
+                  ].map(([icon, title, sub]) => (
+                    <div key={title} style={{ display:'flex', gap:12, padding:'10px 0', borderBottom:'1px solid rgba(124,92,252,.08)' }}>
+                      <span style={{ fontSize:'1.2rem', flexShrink:0 }}>{icon}</span>
+                      <div>
+                        <p style={{ fontSize:'.85rem', fontWeight:500 }}>{title}</p>
+                        <p style={{ fontSize:'.75rem', color:'#8882aa', marginTop:2 }}>{sub}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <button className="yt-btn" onClick={() => window.location.href = '/api/youtube/auth'}>
-                  ▶ &nbsp; Connect YouTube Channel
-                </button>
-                <p style={{ fontSize: '.72rem', color: '#8882aa', textAlign: 'center', marginTop: '8px' }}>
-                  🔒 Secured by Google OAuth 2.0 · We never store your password
-                </p>
               </div>
             </>
           )}
 
-          {/* ── ACCOUNT TAB ── */}
+          {/* ─── ACCOUNT ────────────────────────────────── */}
           {tab === 'account' && (
             <>
-              <h1 className="page-title">Account</h1>
-              <p className="page-sub">Your plan and profile details.</p>
-
-              <div className="panel" style={{ maxWidth: 520, marginBottom: '1rem' }}>
-                <h3>👤 Profile</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {[['Email', user?.email], ['Plan', profile?.plan || 'free'], ['Credits', `${profile?.video_credits ?? 0} remaining`], ['Status', profile?.subscription_status || 'inactive'], ['Total Videos', profile?.total_videos_generated || 0]].map(([k, v]) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid rgba(124,92,252,.1)', fontSize: '.88rem' }}>
-                      <span style={{ color: '#8882aa' }}>{k}</span>
-                      <span style={{ fontWeight: 500 }}>{v}</span>
+              <div className="page-hdr">
+                <h1 className="page-title">👤 Account</h1>
+                <p className="page-sub">Your plan, credits, and profile.</p>
+              </div>
+              <div className="grid2">
+                <div className="card">
+                  <div className="card-title">Profile Details</div>
+                  {[
+                    ['Email', user?.email],
+                    ['Plan', `${profile?.plan || 'free'} ${isAdmin ? '(Admin)' : ''}`],
+                    ['Credits Remaining', isAdmin ? 'Unlimited' : `${credits}`],
+                    ['Subscription Status', profile?.subscription_status || 'inactive'],
+                    ['Total Videos Generated', profile?.total_videos_generated || 0],
+                    ['Admin Access', isAdmin ? '✅ Yes' : 'No'],
+                  ].map(([k,v]) => (
+                    <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'9px 0', borderBottom:'1px solid rgba(124,92,252,.08)', fontSize:'.87rem' }}>
+                      <span style={{ color:'#8882aa' }}>{k}</span>
+                      <span style={{ fontWeight:500 }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="card">
+                  <div className="card-title">💳 Upgrade Your Plan</div>
+                  <p style={{ color:'#8882aa', fontSize:'.85rem', marginBottom:'1.2rem', lineHeight:1.6 }}>
+                    Unlock more video credits, higher quality exports, and additional YouTube channels.
+                  </p>
+                  {[
+                    { name:'Starter', price:'₹1,900/mo', credits:'30 videos', color:'rgba(46,204,138,.1)' },
+                    { name:'Creator Pro', price:'₹4,900/mo', credits:'150 videos', color:'rgba(124,92,252,.15)' },
+                    { name:'Agency', price:'₹12,900/mo', credits:'Unlimited', color:'rgba(195,75,255,.1)' },
+                  ].map(p => (
+                    <div key={p.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:p.color, border:'1px solid rgba(124,92,252,.2)', borderRadius:10, marginBottom:8 }}>
+                      <div>
+                        <p style={{ fontWeight:600, fontSize:'.88rem' }}>{p.name}</p>
+                        <p style={{ fontSize:'.72rem', color:'#8882aa' }}>{p.credits}</p>
+                      </div>
+                      <div style={{ textAlign:'right' }}>
+                        <p style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:'1rem', color:'#c34bff' }}>{p.price}</p>
+                        <a href="/#pricing" style={{ fontSize:'.72rem', color:'#8882aa', textDecoration:'none' }}>Upgrade →</a>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-
-              <div className="panel" style={{ maxWidth: 520 }}>
-                <h3>💳 Upgrade Plan</h3>
-                <p style={{ color: '#8882aa', fontSize: '.85rem', marginBottom: '1rem' }}>Get more video credits and unlock pro features.</p>
-                <a href="/#pricing" style={{ display: 'block', padding: '.85rem', background: 'linear-gradient(135deg,#7c5cfc,#c34bff)', color: '#fff', fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: '.92rem', borderRadius: '10px', textAlign: 'center', textDecoration: 'none' }}>
-                  View Pricing Plans →
-                </a>
-              </div>
             </>
           )}
 
-          {/* ── ADMIN TAB ── */}
-          {tab === 'admin' && profile?.is_admin && (
+          {/* ─── ADMIN PANEL ──────────────────────────── */}
+          {tab === 'admin' && isAdmin && (
             <>
-              <h1 className="page-title">⚡ Admin Panel</h1>
-              <p className="page-sub">Full system access. You have unlimited credits.</p>
-
-              <div className="stats-grid">
-                <div className="stat-card"><div className="stat-label">Your Plan</div><div className="stat-num" style={{ color: '#c34bff', fontSize: '1.2rem' }}>Agency</div></div>
-                <div className="stat-card"><div className="stat-label">Your Credits</div><div className="stat-num" style={{ color: '#2ecc8a' }}>∞</div></div>
-                <div className="stat-card"><div className="stat-label">Videos Generated</div><div className="stat-num">{videos.length}</div></div>
-                <div className="stat-card"><div className="stat-label">Channels Connected</div><div className="stat-num">{channels.length}</div></div>
+              <div className="page-hdr">
+                <h1 className="page-title">⚡ Admin Panel</h1>
+                <p className="page-sub">Full system access. You have unlimited credits and can manage all users.</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="panel">
-                  <h3>🎬 Generate Test Video</h3>
-                  <p style={{ color: '#8882aa', fontSize: '.83rem', marginBottom: '1rem' }}>Use the Generate tab to create and test videos. As admin you have 99,999 credits.</p>
-                  <button className="gen-btn" onClick={() => setTab('generate')}>→ Go to Generator</button>
-                </div>
-                <div className="panel">
-                  <h3>▶ YouTube Test</h3>
-                  <p style={{ color: '#8882aa', fontSize: '.83rem', marginBottom: '1rem' }}>Connect your YouTube channel to test the full publish pipeline end-to-end.</p>
-                  <button className="yt-btn" onClick={() => setTab('youtube')}>→ Connect YouTube</button>
-                </div>
-                <div className="panel">
-                  <h3>🗄️ Supabase DB</h3>
-                  <p style={{ color: '#8882aa', fontSize: '.83rem', marginBottom: '1rem' }}>View all tables, users, and video records directly in Supabase dashboard.</p>
-                  <a href="https://supabase.com/dashboard/project/igygmgxxnrjvstozvaay" target="_blank" rel="noreferrer"
-                    style={{ display: 'block', padding: '.75rem', background: 'rgba(46,204,138,.1)', border: '1px solid rgba(46,204,138,.3)', color: '#2ecc8a', fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: '.88rem', borderRadius: '10px', textAlign: 'center', textDecoration: 'none' }}>
-                    → Open Supabase
-                  </a>
-                </div>
-                <div className="panel">
-                  <h3>📊 Vercel Logs</h3>
-                  <p style={{ color: '#8882aa', fontSize: '.83rem', marginBottom: '1rem' }}>Check API logs, function errors, and deployment status on Vercel.</p>
-                  <a href="https://vercel.com/dashboard" target="_blank" rel="noreferrer"
-                    style={{ display: 'block', padding: '.75rem', background: 'rgba(124,92,252,.1)', border: '1px solid rgba(124,92,252,.25)', color: '#b59dff', fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: '.88rem', borderRadius: '10px', textAlign: 'center', textDecoration: 'none' }}>
-                    → Open Vercel
-                  </a>
-                </div>
-              </div>
+              {adminLoading ? (
+                <div className="empty"><span className="spin" style={{ fontSize:'1.5rem' }}>⚙️</span><p style={{ marginTop:'1rem' }}>Loading admin data...</p></div>
+              ) : adminData ? (
+                <>
+                  {/* Stats */}
+                  <div className="grid4" style={{ marginBottom:'1.5rem' }}>
+                    {[
+                      { label:'Total Users', val: adminData.stats.totalUsers, color:'#f0eeff' },
+                      { label:'Total Videos', val: adminData.stats.totalVideos, color:'#b59dff' },
+                      { label:'Published Videos', val: adminData.stats.publishedVideos, color:'#2ecc8a' },
+                      { label:'Failed Videos', val: adminData.stats.failedVideos, color:'#ff6b7e' },
+                    ].map(s => (
+                      <div className="stat-card" key={s.label}>
+                        <div className="stat-label">{s.label}</div>
+                        <div className="stat-num" style={{ color:s.color }}>{s.val ?? 0}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Grant Credits */}
+                  <div className="card" style={{ marginBottom:'1.2rem' }}>
+                    <div className="card-title">🎁 Grant Credits to User</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 150px auto', gap:'10px', alignItems:'end' }}>
+                      <div>
+                        <span className="fl">User Email</span>
+                        <input type="email" placeholder="user@example.com" value={grantEmail} onChange={e => setGrantEmail(e.target.value)} />
+                      </div>
+                      <div>
+                        <span className="fl">Credits</span>
+                        <input type="number" value={grantCredits} onChange={e => setGrantCredits(e.target.value)} min="1" />
+                      </div>
+                      <div>
+                        <span className="fl">Plan</span>
+                        <select value={grantPlan} onChange={e => setGrantPlan(e.target.value)}>
+                          <option value="free">Free</option>
+                          <option value="starter">Starter</option>
+                          <option value="creator">Creator Pro</option>
+                          <option value="agency">Agency</option>
+                        </select>
+                      </div>
+                      <button className="btn-primary" style={{ padding:'.65rem 1.2rem', whiteSpace:'nowrap' }} onClick={handleGrant}>
+                        Grant →
+                      </button>
+                    </div>
+                    {grantMsg && <div className={`${grantMsg.startsWith('✅') ? 'alert-ok' : 'alert-err'}`} style={{ marginTop:'10px' }}>{grantMsg}</div>}
+                  </div>
+
+                  {/* Recent Users */}
+                  <div className="card" style={{ marginBottom:'1.2rem' }}>
+                    <div className="card-title">👥 Recent Users ({adminData.recentUsers.length})</div>
+                    <div style={{ overflowX:'auto' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Email</th><th>Plan</th><th>Credits</th><th>Admin</th><th>Joined</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {adminData.recentUsers.map(u => (
+                            <tr key={u.id}>
+                              <td style={{ fontFamily:'var(--font-mono)', fontSize:'.78rem' }}>{u.email}</td>
+                              <td><span className={`plan-pill plan-${u.plan || 'free'}`} style={{ fontSize:'.68rem', padding:'2px 8px', borderRadius:'50px', fontWeight:600 }}>{u.plan || 'free'}</span></td>
+                              <td style={{ color:'#c34bff', fontWeight:600 }}>{u.video_credits}</td>
+                              <td>{u.is_admin ? <span style={{ color:'#2ecc8a' }}>✓ Admin</span> : '—'}</td>
+                              <td style={{ color:'#8882aa', fontSize:'.78rem' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Recent Videos */}
+                  <div className="card" style={{ marginBottom:'1.2rem' }}>
+                    <div className="card-title">🎬 Recent Videos ({adminData.recentVideos.length})</div>
+                    <div style={{ overflowX:'auto' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr><th>Title</th><th>Niche</th><th>Duration</th><th>Score</th><th>Status</th><th>Date</th></tr>
+                        </thead>
+                        <tbody>
+                          {adminData.recentVideos.map(v => (
+                            <tr key={v.id}>
+                              <td style={{ maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v.seo_title || '—'}</td>
+                              <td>{v.niche}</td>
+                              <td>{v.duration}s</td>
+                              <td>{v.viral_score ? <span style={{ color:'#2ecc8a' }}>{v.viral_score}/100</span> : '—'}</td>
+                              <td><span className={`vstatus ${v.status}`} style={{ display:'inline-block' }}>{v.status}</span></td>
+                              <td style={{ color:'#8882aa', fontSize:'.78rem' }}>{new Date(v.created_at).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Quick Links */}
+                  <div className="grid2">
+                    {[
+                      { label:'Open Supabase DB', url:`https://supabase.com/dashboard/project/igygmgxxnrjvstozvaay`, color:'rgba(46,204,138,.1)', textColor:'#2ecc8a' },
+                      { label:'Open Vercel Logs', url:'https://vercel.com/dashboard', color:'rgba(124,92,252,.1)', textColor:'#b59dff' },
+                    ].map(l => (
+                      <a key={l.label} href={l.url} target="_blank" rel="noreferrer"
+                        style={{ display:'block', padding:'1rem 1.4rem', background:l.color, border:`1px solid ${l.textColor}40`, borderRadius:12, color:l.textColor, textDecoration:'none', fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'.88rem', textAlign:'center', transition:'opacity .2s' }}
+                        onMouseEnter={e=>e.target.style.opacity='.8'} onMouseLeave={e=>e.target.style.opacity='1'}>
+                        → {l.label}
+                      </a>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="alert-err">Failed to load admin data. Check Vercel logs.</div>
+              )}
             </>
           )}
 
-        </div>
+        </main>
       </div>
     </>
   );
