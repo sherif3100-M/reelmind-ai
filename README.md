@@ -1,40 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# ReelMind AI — Fix Instructions
 
-## Getting Started
+## What was broken
+The 404 error was caused by `pages/index.js` redirecting to `/index.html`,
+which does not exist in Next.js. It has been fixed to redirect to `/login`
+(or `/dashboard` if already logged in).
 
-First, run the development server:
+## How to apply the fix
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Copy every file from this ZIP into your project, matching the folder structure exactly:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| File in this ZIP                          | Put it here in your project              |
+|-------------------------------------------|------------------------------------------|
+| pages/index.js                            | pages/index.js  ← REPLACE                |
+| pages/_app.js                             | pages/_app.js                            |
+| pages/login.js                            | pages/login.js                           |
+| pages/dashboard.js                        | pages/dashboard.js                       |
+| pages/api/videos/generate.js              | pages/api/videos/generate.js             |
+| pages/api/videos/list.js                  | pages/api/videos/list.js                 |
+| pages/api/videos/[id]/status.js           | pages/api/videos/[id]/status.js          |
+| pages/api/auth/session.js                 | pages/api/auth/session.js                |
+| pages/api/admin/stats.js                  | pages/api/admin/stats.js                 |
+| pages/api/admin/grant-credits.js          | pages/api/admin/grant-credits.js         |
+| lib/supabase.js                           | lib/supabase.js                          |
+| lib/gemini.js                             | lib/gemini.js                            |
+| lib/elevenlabs.js                         | lib/elevenlabs.js                        |
+| lib/broll.js                              | lib/broll.js                             |
+| lib/pipeline.js                           | lib/pipeline.js                          |
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+You will need to CREATE these folders if they don't exist:
+- pages/api/auth/
+- pages/api/admin/
+- pages/api/videos/[id]/        ← the brackets are part of the folder name
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+## Supabase SQL (run ONCE in Supabase SQL Editor)
+See ADMIN_SETUP.sql — replace YOUR_EMAIL@gmail.com with your real email BEFORE running.
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+## Push to GitHub
+git add .
+git commit -m "fix: index redirect 404, correct folder structure"
+git push
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+Vercel will redeploy in ~2 minutes.
+Then visit: https://reelmind-ai.vercel.app/login
